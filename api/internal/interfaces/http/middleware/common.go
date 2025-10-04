@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"skoolz/config"
-	"skoolz/internal/logger"
-	AppError "skoolz/internal/shared/error"
+	"copier/config"
+	"copier/internal/logger"
+	AppError "copier/internal/shared/error"
 )
 
 // LoggingMiddleware logs HTTP requests with structured logging

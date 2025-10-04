@@ -2,14 +2,14 @@ package http
 
 import (
 	"context"
+	"copier/internal/infrastructure/container"
+	"copier/internal/interfaces/http/routes"
+	"copier/internal/logger"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
-	"skoolz/internal/infrastructure/container"
-	"skoolz/internal/interfaces/http/routes"
-	"skoolz/internal/logger"
 	"strconv"
 	"syscall"
 	"time"

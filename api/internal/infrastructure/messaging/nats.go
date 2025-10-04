@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"time"
 
-	"skoolz/config"
-	"skoolz/internal/logger"
+	"copier/config"
+	"copier/internal/logger"
 
 	"github.com/nats-io/nats.go"
 )

@@ -1,10 +1,10 @@
 package cli
 
 import (
+	"copier/config"
+	"copier/internal/logger"
 	"fmt"
 	"os"
-	"skoolz/config"
-	"skoolz/internal/logger"
 
 	"github.com/spf13/cobra"
 )

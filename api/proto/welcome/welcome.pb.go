@@ -7,12 +7,13 @@
 package welcome
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -140,7 +141,7 @@ const file_proto_welcome_welcome_proto_rawDesc = "" +
 	"\ttimestamp\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12'\n" +
 	"\x0fproject_version\x18\x04 \x01(\tR\x0eprojectVersion2N\n" +
 	"\x0eWelcomeService\x12<\n" +
-	"\aWelcome\x12\x17.welcome.WelcomeRequest\x1a\x18.welcome.WelcomeResponseB\x1eZ\x1cskoolz/proto/welcome;welcomeb\x06proto3"
+	"\aWelcome\x12\x17.welcome.WelcomeRequest\x1a\x18.welcome.WelcomeResponseB\x1eZ\x1ccopier/proto/welcome;welcomeb\x06proto3"
 
 var (
 	file_proto_welcome_welcome_proto_rawDescOnce sync.Once

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"skoolz/config"
-	AppError "skoolz/internal/shared/error"
+	"copier/config"
+	AppError "copier/internal/shared/error"
 
 	"github.com/redis/go-redis/v9"
 )

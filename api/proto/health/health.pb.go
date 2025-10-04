@@ -7,12 +7,13 @@
 package health
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -138,7 +139,7 @@ const file_proto_health_health_proto_rawDesc = "" +
 	"\ttimestamp\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12\x18\n" +
 	"\aversion\x18\x04 \x01(\tR\aversion2W\n" +
 	"\rHealthService\x12F\n" +
-	"\vHealthCheck\x12\x1a.health.HealthCheckRequest\x1a\x1b.health.HealthCheckResponseB\x1cZ\x1askoolz/proto/health;healthb\x06proto3"
+	"\vHealthCheck\x12\x1a.health.HealthCheckRequest\x1a\x1b.health.HealthCheckResponseB\x1cZ\x1acopier/proto/health;healthb\x06proto3"
 
 var (
 	file_proto_health_health_proto_rawDescOnce sync.Once

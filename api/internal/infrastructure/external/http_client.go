@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"skoolz/config"
+	"copier/config"
 )
 
 // HTTPClient represents an HTTP client for external services

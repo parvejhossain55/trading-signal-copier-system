@@ -2,14 +2,14 @@ package grpc
 
 import (
 	"context"
+	"copier/internal/infrastructure/container"
+	"copier/internal/interfaces/grpc/middleware"
+	"copier/internal/interfaces/grpc/routes"
 	"fmt"
 	"log/slog"
 	"net"
 	"os"
 	"os/signal"
-	"skoolz/internal/infrastructure/container"
-	"skoolz/internal/interfaces/grpc/middleware"
-	"skoolz/internal/interfaces/grpc/routes"
 	"strconv"
 	"syscall"
 	"time"

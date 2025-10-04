@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"skoolz/config"
+	"copier/config"
 )
 
 // ServiceFactory manages external service clients

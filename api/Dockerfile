@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.23.1-alpine3.20 AS builder
+FROM golang:1.24.2-alpine3.20 AS builder
 
 WORKDIR /app
 COPY go.mod go.sum ./
@@ -11,7 +11,7 @@ RUN go build -o main main.go
 FROM alpine:3.14
 WORKDIR /app
 COPY --from=builder /app/main .
-EXPOSE 8080
+EXPOSE 9090 50001
 
 # Command to run the executable
 CMD ["/app/main", "serve-rest"]

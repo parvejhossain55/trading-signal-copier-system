@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"skoolz/internal/infrastructure/container"
-	"skoolz/internal/interfaces/http"
+	"copier/internal/infrastructure/container"
+	"copier/internal/interfaces/http"
 
 	"github.com/spf13/cobra"
 )

@@ -1,10 +1,10 @@
 package cmd
 
 import (
+	"copier/internal/infrastructure/container"
 	"fmt"
 	"os"
 	"path/filepath"
-	"skoolz/internal/infrastructure/container"
 	"sort"
 	"strings"
 

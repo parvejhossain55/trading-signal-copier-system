@@ -10,9 +10,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"skoolz/config"
-	"skoolz/internal/infrastructure/external"
-	welcomepb "skoolz/proto/welcome"
+	"copier/config"
+	"copier/internal/infrastructure/external"
+	welcomepb "copier/proto/welcome"
 )
 
 // ExternalServiceExample demonstrates external service consumption
@@ -67,7 +67,7 @@ func (s *ExternalServiceExample) fetchExternalData(ctx context.Context) (string,
 
 	// Make request to external service
 	resp, err := httpClient.Get(ctx, "/api/data", map[string]string{
-		"X-Custom-Header": "skoolz",
+		"X-Custom-Header": "copier",
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to make HTTP request: %w", err)

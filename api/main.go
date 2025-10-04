@@ -1,6 +1,6 @@
 package main
 
-import "skoolz/cmd"
+import "copier/cmd"
 
 func main() {
 	cmd.Execute()

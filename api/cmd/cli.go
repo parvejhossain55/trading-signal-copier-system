@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"skoolz/internal/interfaces/cli"
+	"copier/internal/interfaces/cli"
 
 	"github.com/spf13/cobra"
 )

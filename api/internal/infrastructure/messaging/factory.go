@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"sync"
 
-	"skoolz/config"
-	"skoolz/internal/logger"
+	"copier/config"
+	"copier/internal/logger"
 )
 
 // MessagingFactory manages Kafka and NATS clients

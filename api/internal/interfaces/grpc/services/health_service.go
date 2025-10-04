@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	health "skoolz/proto/health"
+	health "copier/proto/health"
 )
 
 // HealthService handles gRPC health check requests

@@ -1,10 +1,10 @@
 package cli
 
 import (
+	"copier/config"
 	"fmt"
 	"os"
 	"path/filepath"
-	"skoolz/config"
 	"time"
 
 	"github.com/jmoiron/sqlx"

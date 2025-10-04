@@ -1,9 +1,9 @@
 package routes
 
 import (
+	"copier/internal/interfaces/http/handlers"
+	"copier/internal/interfaces/http/middleware"
 	"net/http"
-	"skoolz/internal/interfaces/http/handlers"
-	"skoolz/internal/interfaces/http/middleware"
 )
 
 // Router handles HTTP routing

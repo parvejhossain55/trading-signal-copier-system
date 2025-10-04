@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"copier/config"
+	"copier/internal/shared/response"
 	"net/http"
-	"skoolz/config"
-	"skoolz/internal/shared/response"
 	"time"
 )
 

@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
-	"skoolz/config"
+	"copier/config"
 )
 
 // GrpcClient represents a gRPC client for external services

@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"skoolz/internal/infrastructure/container"
-	"skoolz/internal/interfaces/grpc"
+	"copier/internal/infrastructure/container"
+	"copier/internal/interfaces/grpc"
 
 	"github.com/spf13/cobra"
 )

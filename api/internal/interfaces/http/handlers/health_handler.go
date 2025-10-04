@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	"skoolz/config"
-	"skoolz/internal/infrastructure/messaging"
-	"skoolz/internal/shared/response"
+	"copier/config"
+	"copier/internal/infrastructure/messaging"
+	"copier/internal/shared/response"
 )
 
 // HealthResponse represents the health check response

@@ -1,8 +1,8 @@
 package handlers
 
 import (
+	"copier/internal/shared/response"
 	"net/http"
-	"skoolz/internal/shared/response"
 )
 
 // NotFoundHandler handles 404 Not Found requests

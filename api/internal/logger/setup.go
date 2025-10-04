@@ -9,7 +9,7 @@ import (
 	"path"
 	"time"
 
-	"skoolz/config"
+	"copier/config"
 
 	"gopkg.in/natefinch/lumberjack.v2"
 )

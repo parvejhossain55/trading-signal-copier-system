@@ -2,8 +2,8 @@ package utils
 
 import (
 	"context"
+	"copier/internal/shared/types"
 	"net/http"
-	"skoolz/internal/shared/types"
 )
 
 type ctxKeyUser struct{}

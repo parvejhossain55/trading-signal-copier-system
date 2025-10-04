@@ -3,13 +3,13 @@ package container
 import (
 	"context"
 	"fmt"
-	"skoolz/config"
-	"skoolz/internal/infrastructure/cache"
-	"skoolz/internal/infrastructure/messaging"
-	"skoolz/internal/logger"
+	"log/slog"
 	"sync"
 
-	"log/slog"
+	"copier/config"
+	"copier/internal/infrastructure/messaging"
+	"copier/internal/logger"
+	"copier/pkg/cache"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/redis/go-redis/v9"

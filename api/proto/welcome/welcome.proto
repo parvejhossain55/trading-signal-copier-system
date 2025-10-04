@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package welcome;
 
-option go_package = "skoolz/proto/welcome;welcome";
+option go_package = "copier/proto/welcome;welcome";
 
 import "google/protobuf/timestamp.proto";
 

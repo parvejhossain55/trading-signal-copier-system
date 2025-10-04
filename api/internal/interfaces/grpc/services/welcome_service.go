@@ -7,8 +7,8 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"skoolz/config"
-	welcomepb "skoolz/proto/welcome"
+	"copier/config"
+	welcomepb "copier/proto/welcome"
 )
 
 // WelcomeService handles gRPC welcome requests

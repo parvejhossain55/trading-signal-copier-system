@@ -1,11 +1,11 @@
 package routes
 
 import (
-	"skoolz/config"
-	"skoolz/internal/infrastructure/external"
-	"skoolz/internal/interfaces/grpc/services"
-	healthpb "skoolz/proto/health"
-	welcomepb "skoolz/proto/welcome"
+	"copier/config"
+	"copier/internal/infrastructure/external"
+	"copier/internal/interfaces/grpc/services"
+	healthpb "copier/proto/health"
+	welcomepb "copier/proto/welcome"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"

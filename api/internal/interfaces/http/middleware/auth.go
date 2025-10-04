@@ -2,12 +2,12 @@ package middleware
 
 import (
 	"context"
+	"copier/config"
+	AppError "copier/internal/shared/error"
+	"copier/internal/shared/types"
+	"copier/internal/shared/utils"
 	"fmt"
 	"net/http"
-	"skoolz/config"
-	AppError "skoolz/internal/shared/error"
-	"skoolz/internal/shared/types"
-	"skoolz/internal/shared/utils"
 	"slices"
 	"strings"
 

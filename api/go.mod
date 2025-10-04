@@ -1,4 +1,4 @@
-module skoolz
+module copier
 
 go 1.24.2
 

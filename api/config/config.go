@@ -40,8 +40,8 @@ type RedisConfig struct {
 // KafkaConfig represents Kafka configuration
 type KafkaConfig struct {
 	Brokers     []string `envconfig:"KAFKA_BROKERS" default:"localhost:9092"`
-	ClientID    string   `envconfig:"KAFKA_CLIENT_ID" default:"skoolz"`
-	GroupID     string   `envconfig:"KAFKA_GROUP_ID" default:"skoolz-group"`
+	ClientID    string   `envconfig:"KAFKA_CLIENT_ID" default:"copier"`
+	GroupID     string   `envconfig:"KAFKA_GROUP_ID" default:"copier-group"`
 	EnableKafka bool     `envconfig:"KAFKA_ENABLE" default:"true"`
 	Topics      struct {
 		UserEvents   string `envconfig:"KAFKA_TOPIC_EVENTS" default:"user-events"`
@@ -61,14 +61,14 @@ type KafkaConfig struct {
 // NatsConfig represents NATS configuration
 type NatsConfig struct {
 	URL      string `envconfig:"NATS_URL" default:"nats://localhost:4222"`
-	ClientID string `envconfig:"NATS_CLIENT_ID" default:"skoolz"`
+	ClientID string `envconfig:"NATS_CLIENT_ID" default:"copier"`
 	Cluster  string `envconfig:"NATS_CLUSTER" default:"test-cluster"`
 	Subjects struct {
 		UserEvents   string `envconfig:"NATS_SUBJECT_EVENTS" default:"user.events"`
 		UserCommands string `envconfig:"NATS_SUBJECT_COMMANDS" default:"user.commands"`
 		UserQueries  string `envconfig:"NATS_SUBJECT_QUERIES" default:"user.queries"`
 	}
-	QueueGroup string `envconfig:"NATS_QUEUE_GROUP" default:"skoolz-group"`
+	QueueGroup string `envconfig:"NATS_QUEUE_GROUP" default:"copier-group"`
 }
 
 // ExternalService represents external service configuration
