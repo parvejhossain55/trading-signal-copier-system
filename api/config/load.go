@@ -43,11 +43,16 @@ func LoadConfig() error {
 		},
 
 		Database: MongoDatabase{
-			Host:     viper.GetString("MONGO_HOST"),
-			Port:     viper.GetInt("MONGO_PORT"),
-			User:     viper.GetString("MONGO_USER"),
-			Password: viper.GetString("MONGO_PASSWORD"),
-			Database: viper.GetString("MONGO_DATABASE"),
+			Host:       viper.GetString("MONGO_HOST"),
+			Port:       viper.GetInt("MONGO_PORT"),
+			User:       viper.GetString("MONGO_USER"),
+			Password:   viper.GetString("MONGO_PASSWORD"),
+			Database:   viper.GetString("MONGO_DATABASE"),
+			AuthSource: viper.GetString("MONGO_AUTH_SOURCE"),
+			SSL:        viper.GetBool("MONGO_SSL"),
+			MaxPoolSize:         viper.GetUint64("MONGO_MAX_POOL_SIZE"),
+			MinPoolSize:         viper.GetUint64("MONGO_MIN_POOL_SIZE"),
+			MaxConnIdleTimeInMs: viper.GetInt("MONGO_MAX_CONN_IDLE_TIME_MS"),
 		},
 
 

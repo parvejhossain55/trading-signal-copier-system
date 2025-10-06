@@ -29,6 +29,24 @@ func serveRest(cmd *cobra.Command, args []string) error {
 	// Initialize logger
 	logger.SetupLogger(conf.ServiceName, string(conf.Mode))
 	
+	// Initialize MongoDB connection
+	mongoClient, err := config.NewMongoDB()
+	if err != nil {
+		fmt.Println("Failed to connect to MongoDB", "error", err)
+		return fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+	defer func() {
+		if err := mongoClient.Disconnect(context.Background()); err != nil {
+			fmt.Println("Failed to disconnect from MongoDB", "error", err)
+		}
+	}()
+	fmt.Println("MongoDB connection established successfully", 
+		"host", conf.Database.Host, 
+		"port", conf.Database.Port, 
+		"database", conf.Database.Database)
+	
+	
+	
 	// Create HTTP server
 	server := &http.Server{
 		Addr:         ":" + strconv.Itoa(conf.HttpPort),
