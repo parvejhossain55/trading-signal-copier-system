@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"copier/internal/interfaces/http/handlers"
-	"copier/internal/interfaces/http/middleware"
+	"copier/http/handlers"
+	"copier/http/middleware"
 	"net/http"
 )
 

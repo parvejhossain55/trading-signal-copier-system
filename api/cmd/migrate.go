@@ -1,13 +1,17 @@
 package cmd
 
 import (
-	"copier/internal/infrastructure/container"
+	"copier/config"
+	"copier/internal/logger"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 	"github.com/spf13/cobra"
 )
 
@@ -18,18 +22,26 @@ var migrateCmd = &cobra.Command{
 }
 
 func migrate(cmd *cobra.Command, args []string) error {
-	// Initialize container
-	container := container.GetContainer()
-	if err := container.Initialize(); err != nil {
-		return fmt.Errorf("failed to initialize container: %v", err)
+	// Load configuration
+	conf := config.GetConfig()
+	
+	// Initialize logger
+	logger.SetupLogger(conf.ServiceName, string(conf.Mode))
+	
+	// Connect to database
+	dbURL := conf.GetDatabaseURL()
+	if dbURL == "" {
+		return fmt.Errorf("database URL not configured")
 	}
-	defer container.Close()
-
-	db := container.GetDB()
-	logger := container.GetLogger()
+	
+	db, err := sqlx.Connect("postgres", dbURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %v", err)
+	}
+	defer db.Close()
 
 	// Get migrations directory
-	migrationsDir := "./internal/infrastructure/database/postgres/migrations"
+	migrationsDir := "./database/migrations"
 
 	// Read all migration files
 	files, err := os.ReadDir(migrationsDir)
@@ -46,7 +58,7 @@ func migrate(cmd *cobra.Command, args []string) error {
 	}
 	sort.Strings(migrationFiles)
 
-	logger.Info("Starting database migrations", "count", len(migrationFiles))
+	slog.Info("Starting database migrations", "count", len(migrationFiles))
 
 	// Create migrations table if it doesn't exist
 	createMigrationsTable := `
@@ -71,7 +83,7 @@ func migrate(cmd *cobra.Command, args []string) error {
 		}
 
 		if count > 0 {
-			logger.Info("Migration already executed", "filename", filename)
+			slog.Info("Migration already executed", "filename", filename)
 			continue
 		}
 
@@ -106,9 +118,9 @@ func migrate(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to commit migration %s: %v", filename, err)
 		}
 
-		logger.Info("Migration executed successfully", "filename", filename)
+		slog.Info("Migration executed successfully", "filename", filename)
 	}
 
-	logger.Info("All migrations completed successfully")
+	slog.Info("All migrations completed successfully")
 	return nil
 }

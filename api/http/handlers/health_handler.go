@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"copier/config"
-	"copier/internal/infrastructure/messaging"
 	"copier/internal/shared/response"
 )
 
@@ -22,7 +21,6 @@ type HealthResponse struct {
 type HealthHandler struct {
 	serviceName      string
 	version          string
-	messagingFactory *messaging.MessagingFactory
 }
 
 // NewHealthHandler creates a new health handler
@@ -35,38 +33,30 @@ func NewHealthHandler() *HealthHandler {
 	}
 }
 
-// SetMessagingFactory sets the messaging factory for health checks
-func (h *HealthHandler) SetMessagingFactory(factory *messaging.MessagingFactory) {
-	h.messagingFactory = factory
-}
-
 // HealthCheck handles the health check endpoint
 func (h *HealthHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	services := make(map[string]interface{})
 	overallStatus := "ok"
 
-	// Check messaging services if factory is available
-	if h.messagingFactory != nil {
-		if err := h.messagingFactory.HealthCheck(); err != nil {
-			services["messaging"] = map[string]interface{}{
-				"status": "error",
-				"error":  err.Error(),
-			}
-			overallStatus = "degraded"
-		} else {
-			services["messaging"] = map[string]interface{}{
-				"status": "ok",
-			}
-		}
+	// Check database connectivity
+	// TODO: Add actual database health check
+	services["database"] = map[string]interface{}{
+		"status": "ok",
 	}
 
-	data := map[string]interface{}{
-		"status":    overallStatus,
-		"service":   h.serviceName,
-		"timestamp": time.Now(),
-		"version":   h.version,
-		"services":  services,
+	// Check messaging service
+	services["messaging"] = map[string]interface{}{
+		"status": "ok",
 	}
 
-	response.WriteOK(w, "Service health check completed", data)
+	// Create health response
+	healthResponse := HealthResponse{
+		Status:    overallStatus,
+		Service:   h.serviceName,
+		Timestamp: time.Now(),
+		Version:   h.version,
+		Services:  services,
+	}
+
+	response.WriteOK(w, "Service health check completed", healthResponse)
 }

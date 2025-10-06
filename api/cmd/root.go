@@ -15,7 +15,6 @@ var RootCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(serveRestCmd)
 	RootCmd.AddCommand(migrateCmd)
-	RootCmd.AddCommand(serveGrpcCmd)
 }
 
 func Execute() {
