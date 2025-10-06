@@ -1,27 +1,27 @@
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: signal_copier_postgres
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: signal_copier_mongodb
     environment:
-      POSTGRES_DB: copier_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: copier_db
     ports:
-      - "5433:5432"
+      - "27017:27017"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mongodb_data:/data/db
       - ./api/database/migrations:/docker-entrypoint-initdb.d
     networks:
       - signal_copier_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d copier_db"]
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
 
 volumes:
-  postgres_data:
+  mongodb_data:
     driver: local
 
 networks:

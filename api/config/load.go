@@ -42,19 +42,14 @@ func LoadConfig() error {
 			MinIdle:  viper.GetInt("REDIS_MIN_IDLE"),
 		},
 
-
-		Database: PostgresDatabase{
-			Host:                viper.GetString("POSTGRES_HOST"),
-			Database:            viper.GetString("POSTGRES_DATABASE"),
-			User:                viper.GetString("POSTGRES_USER"),
-			Password:            viper.GetString("POSTGRES_PASSWORD"),
-			Port:                viper.GetInt("POSTGRES_PORT"),
-			ReplicaSet:          viper.GetString("POSTGRES_REPLICA_SET"),
-			SSL:                 viper.GetBool("POSTGRES_SSL"),
-			MaxPoolSize:         viper.GetUint64("POSTGRES_MAX_POOL_SIZE"),
-			MinPoolSize:         viper.GetUint64("POSTGRES_MIN_POOL_SIZE"),
-			MaxConnIdleTimeInMs: viper.GetInt("POSTGRES_MAX_CONN_IDLE_TIME_MS"),
+		Database: MongoDatabase{
+			Host:     viper.GetString("MONGO_HOST"),
+			Port:     viper.GetInt("MONGO_PORT"),
+			User:     viper.GetString("MONGO_USER"),
+			Password: viper.GetString("MONGO_PASSWORD"),
+			Database: viper.GetString("MONGO_DATABASE"),
 		},
+
 
 		Cors: CorsOrigin{
 			Origin: viper.GetStringSlice("CORS_ORIGIN"),

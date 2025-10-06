@@ -13,18 +13,18 @@ const (
 	Testing     Mode = "testing"
 )
 
-// PostgresDatabase represents PostgreSQL database configuration
-type PostgresDatabase struct {
-	Host                string `envconfig:"POSTGRES_HOST" default:"localhost"`
-	Database            string `envconfig:"POSTGRES_DATABASE"`
-	User                string `envconfig:"POSTGRES_USER"`
-	Password            string `envconfig:"POSTGRES_PASSWORD"`
-	Port                int    `envconfig:"POSTGRES_PORT" default:"5432"`
-	ReplicaSet          string `envconfig:"POSTGRES_REPLICA_SET"`
-	SSL                 bool   `envconfig:"POSTGRES_SSL" default:"false"`
-	MaxPoolSize         uint64 `envconfig:"POSTGRES_MAX_POOL_SIZE" default:"10"`
-	MinPoolSize         uint64 `envconfig:"POSTGRES_MIN_POOL_SIZE" default:"1"`
-	MaxConnIdleTimeInMs int    `envconfig:"POSTGRES_MAX_CONN_IDLE_TIME_MS" default:"300000"`
+// MongoDatabase represents MongoDB database configuration
+type MongoDatabase struct {
+	Host                string `envconfig:"MONGO_HOST" default:"localhost"`
+	Database            string `envconfig:"MONGO_DATABASE"`
+	User                string `envconfig:"MONGO_USER"`
+	Password            string `envconfig:"MONGO_PASSWORD"`
+	Port                int    `envconfig:"MONGO_PORT" default:"27017"`
+	AuthSource          string `envconfig:"MONGO_AUTH_SOURCE" default:"admin"`
+	SSL                 bool   `envconfig:"MONGO_SSL" default:"false"`
+	MaxPoolSize         uint64 `envconfig:"MONGO_MAX_POOL_SIZE" default:"100"`
+	MinPoolSize         uint64 `envconfig:"MONGO_MIN_POOL_SIZE" default:"1"`
+	MaxConnIdleTimeInMs int    `envconfig:"MONGO_MAX_CONN_IDLE_TIME_MS" default:"300000"`
 }
 
 // RedisConfig represents Redis cache configuration
@@ -55,7 +55,7 @@ type Config struct {
 	ServiceBasePath  string `envconfig:"SERVICE_BASE_PATH" default:"/api/v1"`
 
 	// Database configuration
-	Database PostgresDatabase
+	Database MongoDatabase
 
 	// Cache configuration
 	Redis RedisConfig
@@ -97,16 +97,16 @@ func (c *Config) IsTesting() bool {
 	return c.Mode == Testing
 }
 
-// GetDatabaseURL returns the database URL
+// GetDatabaseURL returns the MongoDB connection string
 func (c *Config) GetDatabaseURL() string {
 	// Use the new Database configuration if available
 	if c.Database.User != "" && c.Database.Password != "" && c.Database.Database != "" {
-		sslMode := "disable"
+		sslMode := ""
 		if c.Database.SSL {
-			sslMode = "require"
+			sslMode = "&ssl=true"
 		}
-		return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
-			c.Database.User, c.Database.Password, c.Database.Host, c.Database.Port, c.Database.Database, sslMode)
+		return fmt.Sprintf("mongodb://%s:%s@%s:%d/%s?authSource=%s%s",
+			c.Database.User, c.Database.Password, c.Database.Host, c.Database.Port, c.Database.Database, c.Database.AuthSource, sslMode)
 	}
 
 	return ""
