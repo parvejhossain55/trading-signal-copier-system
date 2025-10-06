@@ -1,17 +1,34 @@
-MAIN:=./
-TARGET:=main
-SERVER_CMD:=./${TARGET} serve-rest
-GEN_JWT:=./${TARGET} gen-jwt
-PROTOC_DEST:=./
-PROTOC_FLAGS:=--go_out=${PROTOC_DEST} --go_opt=paths=source_relative --go-grpc_out=${PROTOC_DEST} --go-grpc_opt=paths=source_relative
-PROTO_FILES:=$(shell find ./proto -name "*.proto" -type f)
+# ====== App metadata ======
+MAIN := ./
+TARGET := main
+SERVER_CMD := ./$(TARGET) serve-rest
+GEN_JWT := ./$(TARGET) gen-jwt
 
-# example migration create command -
-# migrate create -ext sql -seq -dir migrations create-some-table
+# ====== Protobuf ======
+PROTOC_DEST := ./
+PROTO_FILES := $(shell find ./proto -name "*.proto" -type f)
 
+GO_BIN := $(shell go env GOBIN)
+ifeq ($(GO_BIN),)
+  GO_BIN := $(shell go env GOPATH)/bin
+endif
+export PATH := $(PATH):$(GO_BIN)
+
+# ====== Targets ======
+
+## Generate protobufs (robust: explicit plugin paths + timestamp mapping)
 build-proto:
 	@echo "Generating protobuf files..."
-	protoc ${PROTOC_FLAGS} ${PROTO_FILES}
+	PATH="$(PATH):$(GO_BIN)" \
+	protoc \
+	  --plugin=protoc-gen-go=$(GO_BIN)/protoc-gen-go \
+	  --plugin=protoc-gen-go-grpc=$(GO_BIN)/protoc-gen-go-grpc \
+	  --go_out=$(PROTOC_DEST) \
+	  --go_opt=paths=source_relative \
+	  --go_opt=Mgoogle/protobuf/timestamp.proto=google.golang.org/protobuf/types/known/timestamppb \
+	  --go-grpc_out=$(PROTOC_DEST) \
+	  --go-grpc_opt=paths=source_relative \
+	  $(PROTO_FILES)
 	@echo "Protobuf generation completed!"
 
 clean-proto:
@@ -21,12 +38,21 @@ clean-proto:
 
 proto: clean-proto build-proto
 
-run:
-	${SERVER_CMD}
+## Build/run app
+build: install-deps
+	go build -o $(TARGET) $(MAIN)
 
+run:
+	$(SERVER_CMD)
+
+start: build run
+
+## Dependencies / tooling
 tidy:
 	go mod tidy
-	
+
+install-deps:
+	go mod download
 
 install-proto-deps:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
@@ -35,26 +61,20 @@ install-proto-deps:
 install-dev-deps:
 	go install github.com/air-verse/air@latest
 
-install-deps:
-	go mod download
-
 install-mockgen:
 	go install go.uber.org/mock/mockgen@latest
 
 prepare: install-proto-deps install-dev-deps install-deps tidy proto
 
+## Dev (hot reload via Air)
 dev: prepare
-	air serve-rest
+	$(GO_BIN)/air -c .air.toml
 
-jwt: prepare
-	air gen-jwt
+## JWT command (no hot reload)
+jwt: build
+	$(GEN_JWT)
 
-
-build: install-deps
-	go build -o ${TARGET} ${MAIN}
-
-start: build run-server
-
+## Utilities
 list-proto:
 	@echo "Found proto files:"
 	@find ./proto -name "*.proto" -type f | sort
@@ -77,20 +97,12 @@ infra-logs:
 
 help:
 	@echo "Available commands:"
-	@echo "  build-proto    - Generate protobuf files from .proto definitions"
-	@echo "  clean-proto    - Remove generated protobuf files"
-	@echo "  proto          - Clean and rebuild protobuf files"
-	@echo "  list-proto     - List all proto files found"
-	@echo "  install-deps   - Install Go dependencies"
-	@echo "  install-proto-deps - Install protobuf compiler and plugins"
-	@echo "  prepare        - Install all dependencies and generate proto files"
-	@echo "  dev            - Start development server with hot reload"
-	@echo "  build          - Build the application"
-	@echo "  run-server     - Run the server"
-	@echo "  start          - Build and run the server"
-	@echo "  tidy           - Run go mod tidy"
-	@echo "  messaging-example - Run the messaging integration example"
-	@echo "  infra-up       - Start Kafka, NATS, and other infrastructure services"
-	@echo "  infra-down     - Stop infrastructure services"
-	@echo "  infra-logs     - Show infrastructure service logs"
-	@echo "  help           - Show this help message"
+	@echo "  build-proto, clean-proto, proto, list-proto"
+	@echo "  install-deps, install-proto-deps, install-dev-deps, tidy"
+	@echo "  build, run, dev, start, jwt"
+	@echo "  messaging-example, infra-up, infra-down, infra-logs, help"
+
+.PHONY: build-proto clean-proto proto build run start tidy \
+        install-deps install-proto-deps install-dev-deps install-mockgen \
+        prepare dev jwt list-proto messaging-example infra-up infra-down \
+        infra-logs help
