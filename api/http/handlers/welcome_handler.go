@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// WelcomeResponse represents the welcome response
 type WelcomeResponse struct {
 	Message        string    `json:"message"`
 	Service        string    `json:"service"`
@@ -15,19 +14,16 @@ type WelcomeResponse struct {
 	ProjectVersion string    `json:"project_version"`
 }
 
-// WelcomeHandler handles welcome requests
 type WelcomeHandler struct {
 	serviceName string
 }
 
-// NewWelcomeHandler creates a new welcome handler
 func NewWelcomeHandler() *WelcomeHandler {
 	return &WelcomeHandler{
 		serviceName: config.GetConfig().ServiceName,
 	}
 }
 
-// Welcome handles the welcome endpoint
 func (h *WelcomeHandler) Welcome(w http.ResponseWriter, r *http.Request) {
 	data := map[string]interface{}{
 		"message":         "Welcome to the " + h.serviceName + " API!",

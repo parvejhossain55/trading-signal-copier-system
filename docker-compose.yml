@@ -1,27 +1,84 @@
 services:
-  # MongoDB Database
-  mongodb:
-    image: mongo:7.0
-    container_name: signal_copier_mongodb
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password
-      MONGO_INITDB_DATABASE: copier_db
+  # API Service — Production
+  api:
+    profiles: [ "prod" ]
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: signal_copier_api
+    restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "9090:9090"
+    environment:
+      - MODE=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - DB_NAME=copier_db
+      - DB_SSL_MODE=disable
+      - HTTP_PORT=9090
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - signal_copier_network
+
+  # API Service — Development (Hot Reload with Air)
+  api-dev:
+    profiles: [ "dev" ]
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
+    container_name: signal_copier_api_dev
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    environment:
+      - MODE=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=password
+      - DB_NAME=copier_db
+      - DB_SSL_MODE=disable
+      - HTTP_PORT=9090
     volumes:
-      - mongodb_data:/data/db
-      - ./api/database/migrations:/docker-entrypoint-initdb.d
+      # Mount source code for live reloading
+      - ./api:/app
+      # Preserve Go module cache between restarts
+      - go_mod_cache:/go/pkg/mod
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - signal_copier_network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: signal_copier_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: copier_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - signal_copier_network
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD-SHELL", "pg_isready -U admin -d copier_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
 
 volumes:
-  mongodb_data:
+  postgres_data:
+    driver: local
+  go_mod_cache:
     driver: local
 
 networks:

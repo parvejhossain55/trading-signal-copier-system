@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 )
 
-func ConvertToJson(data interface{}) string {
+func ConvertToJson(data any) string {
 	rv, err := json.Marshal(data)
 	if err != nil {
 		Error(err.Error())

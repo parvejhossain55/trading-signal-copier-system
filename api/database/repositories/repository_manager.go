@@ -1,28 +1,28 @@
 package repositories
 
 import (
-	"go.mongodb.org/mongo-driver/mongo"
+	"gorm.io/gorm"
 )
 
 // RepositoryManager manages all repository instances
 type RepositoryManager struct {
-	UserRepo            UserRepository
-	ChannelRepo         ChannelRepository
-	PlatformRepo        PlatformRepository
-	TradeSettingsRepo   TradeSettingsRepository
-	PackageRepo         PackageRepository
+	UserRepo             UserRepository
+	ChannelRepo          ChannelRepository
+	PlatformRepo         PlatformRepository
+	TradeSettingsRepo    TradeSettingsRepository
+	PackageRepo          PackageRepository
 	SubscribePackageRepo SubscribePackageRepository
 }
 
 // NewRepositoryManager creates a new repository manager with all repositories
-func NewRepositoryManager(db *mongo.Database) *RepositoryManager {
+func NewRepositoryManager(db *gorm.DB) *RepositoryManager {
 	return &RepositoryManager{
-		UserRepo:            NewUserRepository(db.Collection("users")),
-		ChannelRepo:         NewChannelRepository(db.Collection("channels")),
-		PlatformRepo:        NewPlatformRepository(db.Collection("platforms")),
-		TradeSettingsRepo:   NewTradeSettingsRepository(db.Collection("trade_settings")),
-		PackageRepo:         NewPackageRepository(db.Collection("packages")),
-		SubscribePackageRepo: NewSubscribePackageRepository(db.Collection("subscribe_packages")),
+		UserRepo:             NewUserRepository(db),
+		ChannelRepo:          NewChannelRepository(db),
+		PlatformRepo:         NewPlatformRepository(db),
+		TradeSettingsRepo:    NewTradeSettingsRepository(db),
+		PackageRepo:          NewPackageRepository(db),
+		SubscribePackageRepo: NewSubscribePackageRepository(db),
 	}
 }
 

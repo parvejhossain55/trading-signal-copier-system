@@ -3,52 +3,51 @@ package repositories
 import (
 	"context"
 	"fmt"
-	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"copier/internal/database/models"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // TradeSettingsRepository defines trade settings-specific repository operations
 type TradeSettingsRepository interface {
 	BaseRepository
-	FindByUserID(ctx context.Context, userID primitive.ObjectID) (*TradeSettings, error)
-	FindByIDTyped(ctx context.Context, id primitive.ObjectID) (*TradeSettings, error)
-	CreateTradeSettings(ctx context.Context, settings *TradeSettings) (*mongo.InsertOneResult, error)
-	UpdateTradeSettings(ctx context.Context, id primitive.ObjectID, update *TradeSettings) error
-	UpdateByUserID(ctx context.Context, userID primitive.ObjectID, update *TradeSettings) error
-	DeleteTradeSettings(ctx context.Context, id primitive.ObjectID) error
-	DeleteByUserID(ctx context.Context, userID primitive.ObjectID) error
-	FindAllWithStopLoss(ctx context.Context, skip, limit int64) ([]*TradeSettings, error)
-	FindAllWithTakeProfit(ctx context.Context, skip, limit int64) ([]*TradeSettings, error)
+	FindByUserID(ctx context.Context, userID uuid.UUID) (*models.TradeSettings, error)
+	FindByIDTyped(ctx context.Context, id uuid.UUID) (*models.TradeSettings, error)
+	CreateTradeSettings(ctx context.Context, settings *models.TradeSettings) error
+	UpdateTradeSettings(ctx context.Context, id uuid.UUID, update *models.TradeSettings) error
+	UpdateByUserID(ctx context.Context, userID uuid.UUID, update *models.TradeSettings) error
+	DeleteTradeSettings(ctx context.Context, id uuid.UUID) error
+	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
+	FindAllWithStopLoss(ctx context.Context, skip, limit int) ([]*models.TradeSettings, error)
+	FindAllWithTakeProfit(ctx context.Context, skip, limit int) ([]*models.TradeSettings, error)
 	CountTradeSettings(ctx context.Context) (int64, error)
-	UpdateStopLossSettings(ctx context.Context, userID primitive.ObjectID, percentage int, status bool) error
-	UpdateTakeProfitSettings(ctx context.Context, userID primitive.ObjectID, status bool, step int, percentages []float64) error
+	UpdateStopLossSettings(ctx context.Context, userID uuid.UUID, percentage int, status bool) error
+	UpdateTakeProfitSettings(ctx context.Context, userID uuid.UUID, status bool, step int, percentages []float64) error
 }
 
 // tradeSettingsRepository implements TradeSettingsRepository interface
 type tradeSettingsRepository struct {
 	BaseRepository
-	collection *mongo.Collection
+	db *gorm.DB
 }
 
 // NewTradeSettingsRepository creates a new trade settings repository instance
-func NewTradeSettingsRepository(collection *mongo.Collection) TradeSettingsRepository {
+func NewTradeSettingsRepository(db *gorm.DB) TradeSettingsRepository {
 	return &tradeSettingsRepository{
-		BaseRepository: NewBaseRepository(collection),
-		collection:     collection,
+		BaseRepository: NewBaseRepository(db),
+		db:             db,
 	}
 }
 
 // FindByUserID finds trade settings for a specific user
-func (r *tradeSettingsRepository) FindByUserID(ctx context.Context, userID primitive.ObjectID) (*TradeSettings, error) {
-	var settings TradeSettings
-	err := r.collection.FindOne(ctx, bson.M{"user": userID}).Decode(&settings)
+func (r *tradeSettingsRepository) FindByUserID(ctx context.Context, userID uuid.UUID) (*models.TradeSettings, error) {
+	var settings models.TradeSettings
+	err := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&settings).Error
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("trade settings not found for user ID: %s", userID.Hex())
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("trade settings not found for user ID: %s", userID)
 		}
 		return nil, fmt.Errorf("failed to find trade settings by user ID: %w", err)
 	}
@@ -57,12 +56,12 @@ func (r *tradeSettingsRepository) FindByUserID(ctx context.Context, userID primi
 }
 
 // FindByIDTyped finds trade settings by ID and returns typed TradeSettings struct
-func (r *tradeSettingsRepository) FindByIDTyped(ctx context.Context, id primitive.ObjectID) (*TradeSettings, error) {
-	var settings TradeSettings
-	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&settings)
+func (r *tradeSettingsRepository) FindByIDTyped(ctx context.Context, id uuid.UUID) (*models.TradeSettings, error) {
+	var settings models.TradeSettings
+	err := r.db.WithContext(ctx).First(&settings, id).Error
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("trade settings not found with ID: %s", id.Hex())
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("trade settings not found with ID: %s", id)
 		}
 		return nil, fmt.Errorf("failed to find trade settings by ID: %w", err)
 	}
@@ -71,20 +70,18 @@ func (r *tradeSettingsRepository) FindByIDTyped(ctx context.Context, id primitiv
 }
 
 // CreateTradeSettings creates new trade settings
-func (r *tradeSettingsRepository) CreateTradeSettings(ctx context.Context, settings *TradeSettings) (*mongo.InsertOneResult, error) {
-	result, err := r.collection.InsertOne(ctx, settings)
+func (r *tradeSettingsRepository) CreateTradeSettings(ctx context.Context, settings *models.TradeSettings) error {
+	err := r.db.WithContext(ctx).Create(settings).Error
 	if err != nil {
-		return nil, fmt.Errorf("failed to create trade settings: %w", err)
+		return fmt.Errorf("failed to create trade settings: %w", err)
 	}
 
-	return result, nil
+	return nil
 }
 
 // UpdateTradeSettings updates existing trade settings by ID
-func (r *tradeSettingsRepository) UpdateTradeSettings(ctx context.Context, id primitive.ObjectID, update *TradeSettings) error {
-	update.UpdatedAt = time.Now()
-	
-	_, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": update})
+func (r *tradeSettingsRepository) UpdateTradeSettings(ctx context.Context, id uuid.UUID, update *models.TradeSettings) error {
+	err := r.db.WithContext(ctx).Model(&models.TradeSettings{}).Where("id = ?", id).Updates(update).Error
 	if err != nil {
 		return fmt.Errorf("failed to update trade settings: %w", err)
 	}
@@ -93,10 +90,8 @@ func (r *tradeSettingsRepository) UpdateTradeSettings(ctx context.Context, id pr
 }
 
 // UpdateByUserID updates trade settings by user ID
-func (r *tradeSettingsRepository) UpdateByUserID(ctx context.Context, userID primitive.ObjectID, update *TradeSettings) error {
-	update.UpdatedAt = time.Now()
-	
-	_, err := r.collection.UpdateOne(ctx, bson.M{"user": userID}, bson.M{"$set": update})
+func (r *tradeSettingsRepository) UpdateByUserID(ctx context.Context, userID uuid.UUID, update *models.TradeSettings) error {
+	err := r.db.WithContext(ctx).Model(&models.TradeSettings{}).Where("user_id = ?", userID).Updates(update).Error
 	if err != nil {
 		return fmt.Errorf("failed to update trade settings by user ID: %w", err)
 	}
@@ -105,8 +100,8 @@ func (r *tradeSettingsRepository) UpdateByUserID(ctx context.Context, userID pri
 }
 
 // DeleteTradeSettings deletes trade settings by ID
-func (r *tradeSettingsRepository) DeleteTradeSettings(ctx context.Context, id primitive.ObjectID) error {
-	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
+func (r *tradeSettingsRepository) DeleteTradeSettings(ctx context.Context, id uuid.UUID) error {
+	err := r.db.WithContext(ctx).Delete(&models.TradeSettings{}, id).Error
 	if err != nil {
 		return fmt.Errorf("failed to delete trade settings: %w", err)
 	}
@@ -115,8 +110,8 @@ func (r *tradeSettingsRepository) DeleteTradeSettings(ctx context.Context, id pr
 }
 
 // DeleteByUserID deletes trade settings by user ID
-func (r *tradeSettingsRepository) DeleteByUserID(ctx context.Context, userID primitive.ObjectID) error {
-	_, err := r.collection.DeleteOne(ctx, bson.M{"user": userID})
+func (r *tradeSettingsRepository) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
+	err := r.db.WithContext(ctx).Where("user_id = ?", userID).Delete(&models.TradeSettings{}).Error
 	if err != nil {
 		return fmt.Errorf("failed to delete trade settings by user ID: %w", err)
 	}
@@ -125,66 +120,38 @@ func (r *tradeSettingsRepository) DeleteByUserID(ctx context.Context, userID pri
 }
 
 // FindAllWithStopLoss finds all trade settings with stop loss enabled
-func (r *tradeSettingsRepository) FindAllWithStopLoss(ctx context.Context, skip, limit int64) ([]*TradeSettings, error) {
-	opts := options.Find()
+func (r *tradeSettingsRepository) FindAllWithStopLoss(ctx context.Context, skip, limit int) ([]*models.TradeSettings, error) {
+	var settings []*models.TradeSettings
+	query := r.db.WithContext(ctx).Where("stop_loss_status = ?", true).Order("created_at desc")
 	if skip > 0 {
-		opts.SetSkip(skip)
+		query = query.Offset(skip)
 	}
 	if limit > 0 {
-		opts.SetLimit(limit)
+		query = query.Limit(limit)
 	}
-	opts.SetSort(bson.M{"created_at": -1})
 
-	cursor, err := r.collection.Find(ctx, bson.M{"stop_loss_status": true}, opts)
+	err := query.Find(&settings).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find trade settings with stop loss: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var settings []*TradeSettings
-	for cursor.Next(ctx) {
-		var setting TradeSettings
-		if err := cursor.Decode(&setting); err != nil {
-			return nil, fmt.Errorf("failed to decode trade settings: %w", err)
-		}
-		settings = append(settings, &setting)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
 	return settings, nil
 }
 
 // FindAllWithTakeProfit finds all trade settings with take profit enabled
-func (r *tradeSettingsRepository) FindAllWithTakeProfit(ctx context.Context, skip, limit int64) ([]*TradeSettings, error) {
-	opts := options.Find()
+func (r *tradeSettingsRepository) FindAllWithTakeProfit(ctx context.Context, skip, limit int) ([]*models.TradeSettings, error) {
+	var settings []*models.TradeSettings
+	query := r.db.WithContext(ctx).Where("take_profit_status = ?", true).Order("created_at desc")
 	if skip > 0 {
-		opts.SetSkip(skip)
+		query = query.Offset(skip)
 	}
 	if limit > 0 {
-		opts.SetLimit(limit)
+		query = query.Limit(limit)
 	}
-	opts.SetSort(bson.M{"created_at": -1})
 
-	cursor, err := r.collection.Find(ctx, bson.M{"take_profit_status": true}, opts)
+	err := query.Find(&settings).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find trade settings with take profit: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var settings []*TradeSettings
-	for cursor.Next(ctx) {
-		var setting TradeSettings
-		if err := cursor.Decode(&setting); err != nil {
-			return nil, fmt.Errorf("failed to decode trade settings: %w", err)
-		}
-		settings = append(settings, &setting)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
 	return settings, nil
@@ -192,7 +159,8 @@ func (r *tradeSettingsRepository) FindAllWithTakeProfit(ctx context.Context, ski
 
 // CountTradeSettings returns the total number of trade settings
 func (r *tradeSettingsRepository) CountTradeSettings(ctx context.Context) (int64, error) {
-	count, err := r.collection.CountDocuments(ctx, bson.M{})
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.TradeSettings{}).Count(&count).Error
 	if err != nil {
 		return 0, fmt.Errorf("failed to count trade settings: %w", err)
 	}
@@ -201,14 +169,11 @@ func (r *tradeSettingsRepository) CountTradeSettings(ctx context.Context) (int64
 }
 
 // UpdateStopLossSettings updates only stop loss related settings
-func (r *tradeSettingsRepository) UpdateStopLossSettings(ctx context.Context, userID primitive.ObjectID, percentage int, status bool) error {
-	update := bson.M{
+func (r *tradeSettingsRepository) UpdateStopLossSettings(ctx context.Context, userID uuid.UUID, percentage int, status bool) error {
+	err := r.db.WithContext(ctx).Model(&models.TradeSettings{}).Where("user_id = ?", userID).Updates(map[string]interface{}{
 		"stop_loss_percentage": percentage,
 		"stop_loss_status":     status,
-		"updated_at":           bson.M{"$currentDate": true},
-	}
-
-	_, err := r.collection.UpdateOne(ctx, bson.M{"user": userID}, bson.M{"$set": update})
+	}).Error
 	if err != nil {
 		return fmt.Errorf("failed to update stop loss settings: %w", err)
 	}
@@ -217,15 +182,12 @@ func (r *tradeSettingsRepository) UpdateStopLossSettings(ctx context.Context, us
 }
 
 // UpdateTakeProfitSettings updates only take profit related settings
-func (r *tradeSettingsRepository) UpdateTakeProfitSettings(ctx context.Context, userID primitive.ObjectID, status bool, step int, percentages []float64) error {
-	update := bson.M{
+func (r *tradeSettingsRepository) UpdateTakeProfitSettings(ctx context.Context, userID uuid.UUID, status bool, step int, percentages []float64) error {
+	err := r.db.WithContext(ctx).Model(&models.TradeSettings{}).Where("user_id = ?", userID).Updates(map[string]interface{}{
 		"take_profit_status": status,
 		"take_profit_step":   step,
 		"tp_percentage":      percentages,
-		"updated_at":         bson.M{"$currentDate": true},
-	}
-
-	_, err := r.collection.UpdateOne(ctx, bson.M{"user": userID}, bson.M{"$set": update})
+	}).Error
 	if err != nil {
 		return fmt.Errorf("failed to update take profit settings: %w", err)
 	}

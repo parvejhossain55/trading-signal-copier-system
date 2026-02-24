@@ -1,0 +1,35 @@
+# Go binaries
+main
+api/main
+
+# Air hot-reload temp directory (generated at runtime inside container)
+tmp/
+
+# Environment files
+.env
+api/.env
+*.env
+
+# Dependency directories
+vendor/
+
+# Build and log files
+logs/
+api/logs/
+*.log
+
+# Git files
+.git
+.gitignore
+
+# OS files
+.DS_Store
+
+# IDE files
+.vscode/
+.idea/
+
+# Testing
+tests/
+api/tests/
+*_test.go

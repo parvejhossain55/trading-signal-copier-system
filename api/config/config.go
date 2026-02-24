@@ -4,7 +4,6 @@ import (
 	"fmt"
 )
 
-// Mode represents the application mode
 type Mode string
 
 const (
@@ -13,21 +12,19 @@ const (
 	Testing     Mode = "testing"
 )
 
-// MongoDatabase represents MongoDB database configuration
-type MongoDatabase struct {
-	Host                string `envconfig:"MONGO_HOST" default:"localhost"`
-	Database            string `envconfig:"MONGO_DATABASE"`
-	User                string `envconfig:"MONGO_USER"`
-	Password            string `envconfig:"MONGO_PASSWORD"`
-	Port                int    `envconfig:"MONGO_PORT" default:"27017"`
-	AuthSource          string `envconfig:"MONGO_AUTH_SOURCE" default:"admin"`
-	SSL                 bool   `envconfig:"MONGO_SSL" default:"false"`
-	MaxPoolSize         uint64 `envconfig:"MONGO_MAX_POOL_SIZE" default:"100"`
-	MinPoolSize         uint64 `envconfig:"MONGO_MIN_POOL_SIZE" default:"1"`
-	MaxConnIdleTimeInMs int    `envconfig:"MONGO_MAX_CONN_IDLE_TIME_MS" default:"300000"`
+type PostgresDatabase struct {
+	Host            string `envconfig:"DB_HOST" default:"localhost"`
+	Database        string `envconfig:"DB_NAME"`
+	User            string `envconfig:"DB_USER"`
+	Password        string `envconfig:"DB_PASSWORD"`
+	Port            int    `envconfig:"DB_PORT" default:"5432"`
+	SSLMode         string `envconfig:"DB_SSL_MODE" default:"disable"`
+	TimeZone        string `envconfig:"DB_TIMEZONE" default:"UTC"`
+	MaxIdleConns    int    `envconfig:"DB_MAX_IDLE_CONNS" default:"10"`
+	MaxOpenConns    int    `envconfig:"DB_MAX_OPEN_CONNS" default:"100"`
+	ConnMaxLifetime int    `envconfig:"DB_CONN_MAX_LIFETIME" default:"3600"`
 }
 
-// RedisConfig represents Redis cache configuration
 type RedisConfig struct {
 	Host     string `envconfig:"REDIS_HOST" default:"localhost"`
 	Port     int    `envconfig:"REDIS_PORT" default:"6379"`
@@ -37,12 +34,10 @@ type RedisConfig struct {
 	MinIdle  int    `envconfig:"REDIS_MIN_IDLE" default:"5"`
 }
 
-
 type CorsOrigin struct {
 	Origin []string `envconfig:"CORS_ORIGIN"`
 }
 
-// Config represents the application configuration
 type Config struct {
 	Version          string `envconfig:"VERSION" default:"1.0.0"`
 	Mode             Mode   `envconfig:"MODE" default:"development"`
@@ -54,27 +49,19 @@ type Config struct {
 	JwtSecret        string `envconfig:"JWT_SECRET" default:"secret"`
 	ServiceBasePath  string `envconfig:"SERVICE_BASE_PATH" default:"/api/v1"`
 
-	// Database configuration
-	Database MongoDatabase
+	Database PostgresDatabase
 
-	// Cache configuration
 	Redis RedisConfig
 
-	
-
-	// Logging
 	LogLevel string `envconfig:"LOG_LEVEL" default:"info"`
 
-	// CORS configuration
 	Cors CorsOrigin
 }
 
 var config *Config
 
-// GetConfig returns the application configuration
 func GetConfig() *Config {
 	if config == nil {
-		// Load configuration from .env file and environment variables
 		if err := LoadConfig(); err != nil {
 			panic(err)
 		}
@@ -82,32 +69,19 @@ func GetConfig() *Config {
 	return config
 }
 
-// IsDevelopment checks if the application is in development mode
 func (c *Config) IsDevelopment() bool {
 	return c.Mode == Development
 }
 
-// IsProduction checks if the application is in production mode
 func (c *Config) IsProduction() bool {
 	return c.Mode == Production
 }
 
-// IsTesting checks if the application is in testing mode
 func (c *Config) IsTesting() bool {
 	return c.Mode == Testing
 }
 
-// GetDatabaseURL returns the MongoDB connection string
-func (c *Config) GetDatabaseURL() string {
-	// Use the new Database configuration if available
-	if c.Database.User != "" && c.Database.Password != "" && c.Database.Database != "" {
-		sslMode := ""
-		if c.Database.SSL {
-			sslMode = "&ssl=true"
-		}
-		return fmt.Sprintf("mongodb://%s:%s@%s:%d/%s?authSource=%s%s",
-			c.Database.User, c.Database.Password, c.Database.Host, c.Database.Port, c.Database.Database, c.Database.AuthSource, sslMode)
-	}
-
-	return ""
+func (c *Config) GetDatabaseDSN() string {
+	return fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
+		c.Database.Host, c.Database.User, c.Database.Password, c.Database.Database, c.Database.Port, c.Database.SSLMode, c.Database.TimeZone)
 }

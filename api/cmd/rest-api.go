@@ -3,6 +3,9 @@ package cmd
 import (
 	"context"
 	"copier/config"
+	"copier/http/routes"
+	"copier/internal/database/models"
+	"copier/internal/di"
 	"copier/internal/logger"
 	"fmt"
 	"log/slog"
@@ -23,40 +26,47 @@ var serveRestCmd = &cobra.Command{
 }
 
 func serveRest(cmd *cobra.Command, args []string) error {
-	// Load configuration
 	conf := config.GetConfig()
-	
-	// Initialize logger
+
 	logger.SetupLogger(conf.ServiceName, string(conf.Mode))
-	
-	// Initialize MongoDB connection
-	mongoClient, err := config.NewMongoDB()
+
+	db, err := config.NewPostgresDB()
 	if err != nil {
-		fmt.Println("Failed to connect to MongoDB", "error", err)
-		return fmt.Errorf("failed to connect to MongoDB: %w", err)
+		fmt.Println("Failed to connect to PostgreSQL", "error", err)
+		return fmt.Errorf("failed to connect to PostgreSQL: %w", err)
 	}
-	defer func() {
-		if err := mongoClient.Disconnect(context.Background()); err != nil {
-			fmt.Println("Failed to disconnect from MongoDB", "error", err)
-		}
-	}()
-	fmt.Println("MongoDB connection established successfully", 
-		"host", conf.Database.Host, 
-		"port", conf.Database.Port, 
+
+	// AutoMigrate models
+	err = db.AutoMigrate(
+		&models.User{},
+		&models.Channel{},
+		&models.Platform{},
+		&models.TradeSettings{},
+		&models.Package{},
+		&models.SubscribePackage{},
+	)
+	if err != nil {
+		slog.Error("Failed to run auto-migration", "error", err)
+		return fmt.Errorf("failed to run auto-migration: %w", err)
+	}
+
+	fmt.Println("PostgreSQL connection established successfully",
+		"host", conf.Database.Host,
+		"port", conf.Database.Port,
 		"database", conf.Database.Database)
-	
-	
-	
-	// Create HTTP server
+
+	// Initialize DI Container
+	container := di.NewContainer(db)
+
+	mux := http.NewServeMux()
 	server := &http.Server{
 		Addr:         ":" + strconv.Itoa(conf.HttpPort),
-		Handler:      setupRoutes(),
+		Handler:      routes.SetupRoutes(mux, container),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Start server in goroutine
 	serverErrors := make(chan error, 1)
 	go func() {
 		slog.Info("Starting HTTP server", "port", conf.HttpPort)
@@ -65,7 +75,6 @@ func serveRest(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	// Wait for either server error or shutdown signal
 	select {
 	case err := <-serverErrors:
 		slog.Error("Server error occurred", "error", err)
@@ -76,47 +85,13 @@ func serveRest(cmd *cobra.Command, args []string) error {
 	}
 }
 
-func setupRoutes() *http.ServeMux {
-	mux := http.NewServeMux()
-	
-	// Health check endpoint
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok","service":"copier","timestamp":"` + time.Now().Format(time.RFC3339) + `"}`))
-	})
-	
-	// Welcome endpoint
-	mux.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"message":"Welcome to Signal Copier API","version":"1.0.0"}`))
-	})
-	
-	// API v1 endpoint
-	mux.HandleFunc("/api/v1", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"message":"Welcome to Signal Copier API v1","version":"1.0.0"}`))
-	})
-	
-	// Catch-all for 404
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(`{"error":"Not Found","message":"The requested resource was not found"}`))
-	})
-	
-	return mux
-}
-
 func shutdown() chan os.Signal {
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown,
-		os.Interrupt,    // Ctrl+C
-		syscall.SIGTERM, // Termination signal
-		syscall.SIGINT,  // Interrupt signal
-		syscall.SIGQUIT, // Quit signal
+		os.Interrupt,
+		syscall.SIGTERM,
+		syscall.SIGINT,
+		syscall.SIGQUIT,
 	)
 	return shutdown
 }

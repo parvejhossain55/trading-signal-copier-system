@@ -2,7 +2,6 @@ package exceptions
 
 import "errors"
 
-// Domain errors
 var (
 	ErrInvalidUserName       = errors.New("invalid user name")
 	ErrInvalidEmail          = errors.New("invalid email address")
@@ -28,7 +27,6 @@ var (
 	ErrInfrastructureError   = errors.New("infrastructure error")
 	ErrExternalServiceError  = errors.New("external service error")
 
-	// Dummy domain errors
 	ErrInvalidDummyName   = errors.New("invalid dummy name")
 	ErrInvalidDummyStatus = errors.New("invalid dummy status")
 	ErrDummyNotFound      = errors.New("dummy not found")

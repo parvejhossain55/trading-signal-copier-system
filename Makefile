@@ -1,6 +1,6 @@
 # Signal Copier Project Makefile
 
-.PHONY: help build up down logs clean restart migrate test
+.PHONY: help build up down logs logs-api logs-db dev dev-api migrate test test-unit test-integration test-e2e clean clean-images status health start
 
 # Default target
 help: ## Show this help message
@@ -27,38 +27,22 @@ logs: ## Show logs for all services
 logs-api: ## Show logs for API service only
 	docker-compose logs -f api
 
-logs-web: ## Show logs for Web service only
-	docker-compose logs -f web
-
-logs-db: ## Show logs for PostgreSQL service only
+logs-db: ## Show logs for Postgres service only
 	docker-compose logs -f postgres
 
 # Development commands
-dev: ## Start services in development mode (with live reload)
+dev: ## Start services in development mode
 	docker-compose up
 
-dev-api: ## Start only API service in development mode
-	docker-compose up api postgres redis kafka nats
-
-dev-web: ## Start only Web service in development mode
-	docker-compose up web
+dev-api: ## Start API and Postgres service
+	docker-compose up api postgres
 
 # Database commands
-migrate: ## Run database migrations
+migrate: ## Run database migrations (automatic in API startup)
 	docker-compose exec api /app/main migrate
 
-# Testing commands
-test: ## Run all tests
-	docker-compose exec api go test ./...
-
-test-unit: ## Run unit tests
-	docker-compose exec api go test ./tests/unit/...
-
-test-integration: ## Run integration tests
-	docker-compose exec api go test ./tests/integration/...
-
-test-e2e: ## Run end-to-end tests
-	docker-compose exec api go test ./tests/e2e/...
+seed: ## Seed the database
+	docker-compose exec api /app/main seed
 
 # Cleanup commands
 clean: ## Remove all containers, networks, and volumes
@@ -78,21 +62,11 @@ health: ## Check health of all services
 	@echo "API Health:"
 	@curl -s http://localhost:9090/health || echo "API not responding"
 	@echo ""
-	@echo "Web Health:"
-	@curl -s http://localhost:3000 || echo "Web not responding"
-	@echo ""
-	@echo "PostgreSQL Health:"
-	@docker-compose exec postgres pg_isready -U postgres || echo "PostgreSQL not responding"
-	@echo ""
-	@echo "Redis Health:"
-	@docker-compose exec redis redis-cli ping || echo "Redis not responding"
+	@echo "Postgres Health:"
+	@docker-compose exec postgres pg_isready -U admin -d copier_db || echo "Postgres not responding"
 
 # Quick start
-start: build up migrate ## Build, start services, and run migrations
+start: build up ## Build and start services
 	@echo "Project started successfully!"
 	@echo "API: http://localhost:9090"
-	@echo "Web: http://localhost:3000"
-	@echo "PostgreSQL: localhost:5432"
-	@echo "Redis: localhost:6379"
-	@echo "Kafka: localhost:9092"
-	@echo "NATS: localhost:4222"
+	@echo "Health: http://localhost:9090/health"

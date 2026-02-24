@@ -5,107 +5,81 @@ import (
 	"fmt"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"copier/internal/database/models"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // SubscribePackageRepository defines subscribe package-specific repository operations
 type SubscribePackageRepository interface {
 	BaseRepository
-	FindByUserID(ctx context.Context, userID primitive.ObjectID) ([]*SubscribePackage, error)
-	FindByPackageID(ctx context.Context, packageID primitive.ObjectID) ([]*SubscribePackage, error)
-	FindByUserAndPackage(ctx context.Context, userID, packageID primitive.ObjectID) (*SubscribePackage, error)
-	FindByTnxHash(ctx context.Context, tnxHash string) (*SubscribePackage, error)
-	FindByBinancePayID(ctx context.Context, binancePayID string) (*SubscribePackage, error)
-	FindByStatus(ctx context.Context, status SubscriptionStatus) ([]*SubscribePackage, error)
-	FindByPaymentMethod(ctx context.Context, paymentMethod PaymentMethod) ([]*SubscribePackage, error)
-	FindActiveSubscriptions(ctx context.Context) ([]*SubscribePackage, error)
-	FindExpiredSubscriptions(ctx context.Context) ([]*SubscribePackage, error)
-	FindByIDTyped(ctx context.Context, id primitive.ObjectID) (*SubscribePackage, error)
-	CreateSubscribePackage(ctx context.Context, subscription *SubscribePackage) (*mongo.InsertOneResult, error)
-	UpdateSubscribePackage(ctx context.Context, id primitive.ObjectID, update *SubscribePackage) error
-	DeleteSubscribePackage(ctx context.Context, id primitive.ObjectID) error
-	DeleteByUserID(ctx context.Context, userID primitive.ObjectID) error
-	FindAllByUser(ctx context.Context, userID primitive.ObjectID, skip, limit int64) ([]*SubscribePackage, error)
-	CountSubscriptionsByUser(ctx context.Context, userID primitive.ObjectID) (int64, error)
-	CountByStatus(ctx context.Context, status SubscriptionStatus) (int64, error)
-	CountByPaymentMethod(ctx context.Context, paymentMethod PaymentMethod) (int64, error)
-	UpdateStatus(ctx context.Context, id primitive.ObjectID, status SubscriptionStatus) error
-	UpdatePaymentInfo(ctx context.Context, id primitive.ObjectID, tnxHash, binancePayID *string) error
-	UpdateSubscriptionDates(ctx context.Context, id primitive.ObjectID, startDate, endDate *primitive.DateTime) error
+	FindByUserID(ctx context.Context, userID uuid.UUID) ([]*models.SubscribePackage, error)
+	FindByPackageID(ctx context.Context, packageID uuid.UUID) ([]*models.SubscribePackage, error)
+	FindByUserAndPackage(ctx context.Context, userID, packageID uuid.UUID) (*models.SubscribePackage, error)
+	FindByTnxHash(ctx context.Context, tnxHash string) (*models.SubscribePackage, error)
+	FindByBinancePayID(ctx context.Context, binancePayID string) (*models.SubscribePackage, error)
+	FindByStatus(ctx context.Context, status models.SubscriptionStatus) ([]*models.SubscribePackage, error)
+	FindByPaymentMethod(ctx context.Context, paymentMethod models.PaymentMethod) ([]*models.SubscribePackage, error)
+	FindActiveSubscriptions(ctx context.Context) ([]*models.SubscribePackage, error)
+	FindExpiredSubscriptions(ctx context.Context) ([]*models.SubscribePackage, error)
+	FindByIDTyped(ctx context.Context, id uuid.UUID) (*models.SubscribePackage, error)
+	CreateSubscribePackage(ctx context.Context, subscription *models.SubscribePackage) error
+	UpdateSubscribePackage(ctx context.Context, id uuid.UUID, update *models.SubscribePackage) error
+	DeleteSubscribePackage(ctx context.Context, id uuid.UUID) error
+	DeleteByUserID(ctx context.Context, userID uuid.UUID) error
+	FindAllByUser(ctx context.Context, userID uuid.UUID, skip, limit int) ([]*models.SubscribePackage, error)
+	CountSubscriptionsByUser(ctx context.Context, userID uuid.UUID) (int64, error)
+	CountByStatus(ctx context.Context, status models.SubscriptionStatus) (int64, error)
+	CountByPaymentMethod(ctx context.Context, paymentMethod models.PaymentMethod) (int64, error)
+	UpdateStatus(ctx context.Context, id uuid.UUID, status models.SubscriptionStatus) error
+	UpdatePaymentInfo(ctx context.Context, id uuid.UUID, tnxHash, binancePayID *string) error
+	UpdateSubscriptionDates(ctx context.Context, id uuid.UUID, startDate, endDate *time.Time) error
 }
 
 // subscribePackageRepository implements SubscribePackageRepository interface
 type subscribePackageRepository struct {
 	BaseRepository
-	collection *mongo.Collection
+	db *gorm.DB
 }
 
 // NewSubscribePackageRepository creates a new subscribe package repository instance
-func NewSubscribePackageRepository(collection *mongo.Collection) SubscribePackageRepository {
+func NewSubscribePackageRepository(db *gorm.DB) SubscribePackageRepository {
 	return &subscribePackageRepository{
-		BaseRepository: NewBaseRepository(collection),
-		collection:     collection,
+		BaseRepository: NewBaseRepository(db),
+		db:             db,
 	}
 }
 
 // FindByUserID finds all subscriptions for a specific user
-func (r *subscribePackageRepository) FindByUserID(ctx context.Context, userID primitive.ObjectID) ([]*SubscribePackage, error) {
-	cursor, err := r.collection.Find(ctx, bson.M{"user": userID})
+func (r *subscribePackageRepository) FindByUserID(ctx context.Context, userID uuid.UUID) ([]*models.SubscribePackage, error) {
+	var subscriptions []*models.SubscribePackage
+	err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&subscriptions).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find subscriptions by user ID: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var subscriptions []*SubscribePackage
-	for cursor.Next(ctx) {
-		var subscription SubscribePackage
-		if err := cursor.Decode(&subscription); err != nil {
-			return nil, fmt.Errorf("failed to decode subscription: %w", err)
-		}
-		subscriptions = append(subscriptions, &subscription)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
 	return subscriptions, nil
 }
 
 // FindByPackageID finds all subscriptions for a specific package
-func (r *subscribePackageRepository) FindByPackageID(ctx context.Context, packageID primitive.ObjectID) ([]*SubscribePackage, error) {
-	cursor, err := r.collection.Find(ctx, bson.M{"package_id": packageID})
+func (r *subscribePackageRepository) FindByPackageID(ctx context.Context, packageID uuid.UUID) ([]*models.SubscribePackage, error) {
+	var subscriptions []*models.SubscribePackage
+	err := r.db.WithContext(ctx).Where("package_id = ?", packageID).Find(&subscriptions).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find subscriptions by package ID: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var subscriptions []*SubscribePackage
-	for cursor.Next(ctx) {
-		var subscription SubscribePackage
-		if err := cursor.Decode(&subscription); err != nil {
-			return nil, fmt.Errorf("failed to decode subscription: %w", err)
-		}
-		subscriptions = append(subscriptions, &subscription)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
 	return subscriptions, nil
 }
 
 // FindByUserAndPackage finds a subscription by user and package
-func (r *subscribePackageRepository) FindByUserAndPackage(ctx context.Context, userID, packageID primitive.ObjectID) (*SubscribePackage, error) {
-	var subscription SubscribePackage
-	err := r.collection.FindOne(ctx, bson.M{"user": userID, "package_id": packageID}).Decode(&subscription)
+func (r *subscribePackageRepository) FindByUserAndPackage(ctx context.Context, userID, packageID uuid.UUID) (*models.SubscribePackage, error) {
+	var subscription models.SubscribePackage
+	err := r.db.WithContext(ctx).Where("user_id = ? AND package_id = ?", userID, packageID).First(&subscription).Error
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("subscription not found for user ID: %s and package ID: %s", userID.Hex(), packageID.Hex())
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("subscription not found for user ID: %s and package ID: %s", userID, packageID)
 		}
 		return nil, fmt.Errorf("failed to find subscription by user and package: %w", err)
 	}
@@ -114,11 +88,11 @@ func (r *subscribePackageRepository) FindByUserAndPackage(ctx context.Context, u
 }
 
 // FindByTnxHash finds a subscription by transaction hash
-func (r *subscribePackageRepository) FindByTnxHash(ctx context.Context, tnxHash string) (*SubscribePackage, error) {
-	var subscription SubscribePackage
-	err := r.collection.FindOne(ctx, bson.M{"tnx_hash": tnxHash}).Decode(&subscription)
+func (r *subscribePackageRepository) FindByTnxHash(ctx context.Context, tnxHash string) (*models.SubscribePackage, error) {
+	var subscription models.SubscribePackage
+	err := r.db.WithContext(ctx).Where("tnx_hash = ?", tnxHash).First(&subscription).Error
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
+		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("subscription not found with transaction hash: %s", tnxHash)
 		}
 		return nil, fmt.Errorf("failed to find subscription by transaction hash: %w", err)
@@ -128,11 +102,11 @@ func (r *subscribePackageRepository) FindByTnxHash(ctx context.Context, tnxHash 
 }
 
 // FindByBinancePayID finds a subscription by Binance Pay ID
-func (r *subscribePackageRepository) FindByBinancePayID(ctx context.Context, binancePayID string) (*SubscribePackage, error) {
-	var subscription SubscribePackage
-	err := r.collection.FindOne(ctx, bson.M{"binance_pay_id": binancePayID}).Decode(&subscription)
+func (r *subscribePackageRepository) FindByBinancePayID(ctx context.Context, binancePayID string) (*models.SubscribePackage, error) {
+	var subscription models.SubscribePackage
+	err := r.db.WithContext(ctx).Where("binance_pay_id = ?", binancePayID).First(&subscription).Error
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
+		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("subscription not found with Binance Pay ID: %s", binancePayID)
 		}
 		return nil, fmt.Errorf("failed to find subscription by Binance Pay ID: %w", err)
@@ -142,122 +116,56 @@ func (r *subscribePackageRepository) FindByBinancePayID(ctx context.Context, bin
 }
 
 // FindByStatus finds all subscriptions with a specific status
-func (r *subscribePackageRepository) FindByStatus(ctx context.Context, status SubscriptionStatus) ([]*SubscribePackage, error) {
-	cursor, err := r.collection.Find(ctx, bson.M{"status": status})
+func (r *subscribePackageRepository) FindByStatus(ctx context.Context, status models.SubscriptionStatus) ([]*models.SubscribePackage, error) {
+	var subscriptions []*models.SubscribePackage
+	err := r.db.WithContext(ctx).Where("status = ?", status).Find(&subscriptions).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find subscriptions by status: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var subscriptions []*SubscribePackage
-	for cursor.Next(ctx) {
-		var subscription SubscribePackage
-		if err := cursor.Decode(&subscription); err != nil {
-			return nil, fmt.Errorf("failed to decode subscription: %w", err)
-		}
-		subscriptions = append(subscriptions, &subscription)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
 	return subscriptions, nil
 }
 
 // FindByPaymentMethod finds all subscriptions with a specific payment method
-func (r *subscribePackageRepository) FindByPaymentMethod(ctx context.Context, paymentMethod PaymentMethod) ([]*SubscribePackage, error) {
-	cursor, err := r.collection.Find(ctx, bson.M{"payment_method": paymentMethod})
+func (r *subscribePackageRepository) FindByPaymentMethod(ctx context.Context, paymentMethod models.PaymentMethod) ([]*models.SubscribePackage, error) {
+	var subscriptions []*models.SubscribePackage
+	err := r.db.WithContext(ctx).Where("payment_method = ?", paymentMethod).Find(&subscriptions).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find subscriptions by payment method: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var subscriptions []*SubscribePackage
-	for cursor.Next(ctx) {
-		var subscription SubscribePackage
-		if err := cursor.Decode(&subscription); err != nil {
-			return nil, fmt.Errorf("failed to decode subscription: %w", err)
-		}
-		subscriptions = append(subscriptions, &subscription)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
 	return subscriptions, nil
 }
 
 // FindActiveSubscriptions finds all active subscriptions (completed status with valid dates)
-func (r *subscribePackageRepository) FindActiveSubscriptions(ctx context.Context) ([]*SubscribePackage, error) {
-	filter := bson.M{
-		"status": SubscriptionStatusCompleted,
-		"end_date": bson.M{
-			"$gt": time.Now(),
-		},
-	}
-
-	cursor, err := r.collection.Find(ctx, filter)
+func (r *subscribePackageRepository) FindActiveSubscriptions(ctx context.Context) ([]*models.SubscribePackage, error) {
+	var subscriptions []*models.SubscribePackage
+	err := r.db.WithContext(ctx).Where("status = ? AND end_date > ?", models.SubscriptionStatusCompleted, time.Now()).Find(&subscriptions).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find active subscriptions: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var subscriptions []*SubscribePackage
-	for cursor.Next(ctx) {
-		var subscription SubscribePackage
-		if err := cursor.Decode(&subscription); err != nil {
-			return nil, fmt.Errorf("failed to decode subscription: %w", err)
-		}
-		subscriptions = append(subscriptions, &subscription)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
 	return subscriptions, nil
 }
 
 // FindExpiredSubscriptions finds all expired subscriptions
-func (r *subscribePackageRepository) FindExpiredSubscriptions(ctx context.Context) ([]*SubscribePackage, error) {
-	filter := bson.M{
-		"status": SubscriptionStatusCompleted,
-		"end_date": bson.M{
-			"$lt": time.Now(),
-		},
-	}
-
-	cursor, err := r.collection.Find(ctx, filter)
+func (r *subscribePackageRepository) FindExpiredSubscriptions(ctx context.Context) ([]*models.SubscribePackage, error) {
+	var subscriptions []*models.SubscribePackage
+	err := r.db.WithContext(ctx).Where("status = ? AND end_date < ?", models.SubscriptionStatusCompleted, time.Now()).Find(&subscriptions).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find expired subscriptions: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var subscriptions []*SubscribePackage
-	for cursor.Next(ctx) {
-		var subscription SubscribePackage
-		if err := cursor.Decode(&subscription); err != nil {
-			return nil, fmt.Errorf("failed to decode subscription: %w", err)
-		}
-		subscriptions = append(subscriptions, &subscription)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
 	return subscriptions, nil
 }
 
 // FindByIDTyped finds a subscription by ID and returns typed SubscribePackage struct
-func (r *subscribePackageRepository) FindByIDTyped(ctx context.Context, id primitive.ObjectID) (*SubscribePackage, error) {
-	var subscription SubscribePackage
-	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&subscription)
+func (r *subscribePackageRepository) FindByIDTyped(ctx context.Context, id uuid.UUID) (*models.SubscribePackage, error) {
+	var subscription models.SubscribePackage
+	err := r.db.WithContext(ctx).First(&subscription, id).Error
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("subscription not found with ID: %s", id.Hex())
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("subscription not found with ID: %s", id)
 		}
 		return nil, fmt.Errorf("failed to find subscription by ID: %w", err)
 	}
@@ -266,20 +174,18 @@ func (r *subscribePackageRepository) FindByIDTyped(ctx context.Context, id primi
 }
 
 // CreateSubscribePackage creates a new subscription
-func (r *subscribePackageRepository) CreateSubscribePackage(ctx context.Context, subscription *SubscribePackage) (*mongo.InsertOneResult, error) {
-	result, err := r.collection.InsertOne(ctx, subscription)
+func (r *subscribePackageRepository) CreateSubscribePackage(ctx context.Context, subscription *models.SubscribePackage) error {
+	err := r.db.WithContext(ctx).Create(subscription).Error
 	if err != nil {
-		return nil, fmt.Errorf("failed to create subscription: %w", err)
+		return fmt.Errorf("failed to create subscription: %w", err)
 	}
 
-	return result, nil
+	return nil
 }
 
 // UpdateSubscribePackage updates an existing subscription
-func (r *subscribePackageRepository) UpdateSubscribePackage(ctx context.Context, id primitive.ObjectID, update *SubscribePackage) error {
-	update.UpdatedAt = time.Now()
-	
-	_, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": update})
+func (r *subscribePackageRepository) UpdateSubscribePackage(ctx context.Context, id uuid.UUID, update *models.SubscribePackage) error {
+	err := r.db.WithContext(ctx).Model(&models.SubscribePackage{}).Where("id = ?", id).Updates(update).Error
 	if err != nil {
 		return fmt.Errorf("failed to update subscription: %w", err)
 	}
@@ -288,8 +194,8 @@ func (r *subscribePackageRepository) UpdateSubscribePackage(ctx context.Context,
 }
 
 // DeleteSubscribePackage deletes a subscription by ID
-func (r *subscribePackageRepository) DeleteSubscribePackage(ctx context.Context, id primitive.ObjectID) error {
-	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
+func (r *subscribePackageRepository) DeleteSubscribePackage(ctx context.Context, id uuid.UUID) error {
+	err := r.db.WithContext(ctx).Delete(&models.SubscribePackage{}, id).Error
 	if err != nil {
 		return fmt.Errorf("failed to delete subscription: %w", err)
 	}
@@ -298,8 +204,8 @@ func (r *subscribePackageRepository) DeleteSubscribePackage(ctx context.Context,
 }
 
 // DeleteByUserID deletes all subscriptions for a specific user
-func (r *subscribePackageRepository) DeleteByUserID(ctx context.Context, userID primitive.ObjectID) error {
-	_, err := r.collection.DeleteMany(ctx, bson.M{"user": userID})
+func (r *subscribePackageRepository) DeleteByUserID(ctx context.Context, userID uuid.UUID) error {
+	err := r.db.WithContext(ctx).Where("user_id = ?", userID).Delete(&models.SubscribePackage{}).Error
 	if err != nil {
 		return fmt.Errorf("failed to delete subscriptions by user ID: %w", err)
 	}
@@ -308,41 +214,28 @@ func (r *subscribePackageRepository) DeleteByUserID(ctx context.Context, userID 
 }
 
 // FindAllByUser retrieves all subscriptions for a user with pagination
-func (r *subscribePackageRepository) FindAllByUser(ctx context.Context, userID primitive.ObjectID, skip, limit int64) ([]*SubscribePackage, error) {
-	opts := options.Find()
+func (r *subscribePackageRepository) FindAllByUser(ctx context.Context, userID uuid.UUID, skip, limit int) ([]*models.SubscribePackage, error) {
+	var subscriptions []*models.SubscribePackage
+	query := r.db.WithContext(ctx).Where("user_id = ?", userID).Order("created_at desc")
 	if skip > 0 {
-		opts.SetSkip(skip)
+		query = query.Offset(skip)
 	}
 	if limit > 0 {
-		opts.SetLimit(limit)
+		query = query.Limit(limit)
 	}
-	opts.SetSort(bson.M{"created_at": -1}) // Sort by creation date descending
 
-	cursor, err := r.collection.Find(ctx, bson.M{"user": userID}, opts)
+	err := query.Find(&subscriptions).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find subscriptions by user: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var subscriptions []*SubscribePackage
-	for cursor.Next(ctx) {
-		var subscription SubscribePackage
-		if err := cursor.Decode(&subscription); err != nil {
-			return nil, fmt.Errorf("failed to decode subscription: %w", err)
-		}
-		subscriptions = append(subscriptions, &subscription)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
 	return subscriptions, nil
 }
 
 // CountSubscriptionsByUser returns the number of subscriptions for a specific user
-func (r *subscribePackageRepository) CountSubscriptionsByUser(ctx context.Context, userID primitive.ObjectID) (int64, error) {
-	count, err := r.collection.CountDocuments(ctx, bson.M{"user": userID})
+func (r *subscribePackageRepository) CountSubscriptionsByUser(ctx context.Context, userID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.SubscribePackage{}).Where("user_id = ?", userID).Count(&count).Error
 	if err != nil {
 		return 0, fmt.Errorf("failed to count subscriptions by user: %w", err)
 	}
@@ -351,8 +244,9 @@ func (r *subscribePackageRepository) CountSubscriptionsByUser(ctx context.Contex
 }
 
 // CountByStatus returns the number of subscriptions with a specific status
-func (r *subscribePackageRepository) CountByStatus(ctx context.Context, status SubscriptionStatus) (int64, error) {
-	count, err := r.collection.CountDocuments(ctx, bson.M{"status": status})
+func (r *subscribePackageRepository) CountByStatus(ctx context.Context, status models.SubscriptionStatus) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.SubscribePackage{}).Where("status = ?", status).Count(&count).Error
 	if err != nil {
 		return 0, fmt.Errorf("failed to count subscriptions by status: %w", err)
 	}
@@ -361,8 +255,9 @@ func (r *subscribePackageRepository) CountByStatus(ctx context.Context, status S
 }
 
 // CountByPaymentMethod returns the number of subscriptions with a specific payment method
-func (r *subscribePackageRepository) CountByPaymentMethod(ctx context.Context, paymentMethod PaymentMethod) (int64, error) {
-	count, err := r.collection.CountDocuments(ctx, bson.M{"payment_method": paymentMethod})
+func (r *subscribePackageRepository) CountByPaymentMethod(ctx context.Context, paymentMethod models.PaymentMethod) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.SubscribePackage{}).Where("payment_method = ?", paymentMethod).Count(&count).Error
 	if err != nil {
 		return 0, fmt.Errorf("failed to count subscriptions by payment method: %w", err)
 	}
@@ -371,13 +266,8 @@ func (r *subscribePackageRepository) CountByPaymentMethod(ctx context.Context, p
 }
 
 // UpdateStatus updates only the status of a subscription
-func (r *subscribePackageRepository) UpdateStatus(ctx context.Context, id primitive.ObjectID, status SubscriptionStatus) error {
-	update := bson.M{
-		"status":     status,
-		"updated_at": bson.M{"$currentDate": true},
-	}
-
-	_, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": update})
+func (r *subscribePackageRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status models.SubscriptionStatus) error {
+	err := r.db.WithContext(ctx).Model(&models.SubscribePackage{}).Where("id = ?", id).Update("status", status).Error
 	if err != nil {
 		return fmt.Errorf("failed to update subscription status: %w", err)
 	}
@@ -386,19 +276,20 @@ func (r *subscribePackageRepository) UpdateStatus(ctx context.Context, id primit
 }
 
 // UpdatePaymentInfo updates payment-related information
-func (r *subscribePackageRepository) UpdatePaymentInfo(ctx context.Context, id primitive.ObjectID, tnxHash, binancePayID *string) error {
-	update := bson.M{
-		"updated_at": bson.M{"$currentDate": true},
-	}
-
+func (r *subscribePackageRepository) UpdatePaymentInfo(ctx context.Context, id uuid.UUID, tnxHash, binancePayID *string) error {
+	updates := make(map[string]interface{})
 	if tnxHash != nil {
-		update["tnx_hash"] = tnxHash
+		updates["tnx_hash"] = tnxHash
 	}
 	if binancePayID != nil {
-		update["binance_pay_id"] = binancePayID
+		updates["binance_pay_id"] = binancePayID
 	}
 
-	_, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": update})
+	if len(updates) == 0 {
+		return nil
+	}
+
+	err := r.db.WithContext(ctx).Model(&models.SubscribePackage{}).Where("id = ?", id).Updates(updates).Error
 	if err != nil {
 		return fmt.Errorf("failed to update subscription payment info: %w", err)
 	}
@@ -407,19 +298,20 @@ func (r *subscribePackageRepository) UpdatePaymentInfo(ctx context.Context, id p
 }
 
 // UpdateSubscriptionDates updates start and end dates of a subscription
-func (r *subscribePackageRepository) UpdateSubscriptionDates(ctx context.Context, id primitive.ObjectID, startDate, endDate *primitive.DateTime) error {
-	update := bson.M{
-		"updated_at": bson.M{"$currentDate": true},
-	}
-
+func (r *subscribePackageRepository) UpdateSubscriptionDates(ctx context.Context, id uuid.UUID, startDate, endDate *time.Time) error {
+	updates := make(map[string]interface{})
 	if startDate != nil {
-		update["start_date"] = startDate
+		updates["start_date"] = startDate
 	}
 	if endDate != nil {
-		update["end_date"] = endDate
+		updates["end_date"] = endDate
 	}
 
-	_, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": update})
+	if len(updates) == 0 {
+		return nil
+	}
+
+	err := r.db.WithContext(ctx).Model(&models.SubscribePackage{}).Where("id = ?", id).Updates(updates).Error
 	if err != nil {
 		return fmt.Errorf("failed to update subscription dates: %w", err)
 	}

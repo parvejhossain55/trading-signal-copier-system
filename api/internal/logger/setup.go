@@ -42,7 +42,6 @@ func replacer(groups []string, a slog.Attr) slog.Attr {
 	}
 }
 
-// SetupLogger sets up the logger with automatic log ID generation
 func SetupLogger(serviceName string, mode string) {
 	var multiWriter io.Writer
 
@@ -73,20 +72,18 @@ func SetupLogger(serviceName string, mode string) {
 		multiWriter = io.MultiWriter(os.Stdout, fileLogger)
 	}
 
-	// Setup JSON handler with Grafana-friendly format and automatic log ID
 	logger := slog.New(slog.NewJSONHandler(multiWriter, &slog.HandlerOptions{
 		AddSource:   true,
 		Level:       slog.LevelDebug,
 		ReplaceAttr: replacer,
 	})).With(
 		string(ServiceKey), serviceName,
-		logIDString, GenerateLogID(), // Automatically add log ID to all entries
+		logIDString, GenerateLogID(),
 	)
 
 	slog.SetDefault(logger)
 }
 
-// SetupLoggerWithContext sets up the logger with context-aware log ID generation
 func SetupLoggerWithContext(serviceName string, mode string, ctx context.Context) {
 	var multiWriter io.Writer
 
@@ -117,13 +114,11 @@ func SetupLoggerWithContext(serviceName string, mode string, ctx context.Context
 		multiWriter = io.MultiWriter(os.Stdout, fileLogger)
 	}
 
-	// Get log ID from context or generate new one
 	logID := GetLogIDFromContext(ctx)
 	if logID == "" {
 		logID = GenerateLogID()
 	}
 
-	// Setup JSON handler with Grafana-friendly format and context-aware log ID
 	logger := slog.New(slog.NewJSONHandler(multiWriter, &slog.HandlerOptions{
 		AddSource:   true,
 		Level:       slog.LevelDebug,
@@ -136,13 +131,10 @@ func SetupLoggerWithContext(serviceName string, mode string, ctx context.Context
 	slog.SetDefault(logger)
 }
 
-// NewLogger creates and returns a new logger instance
 func NewLogger() (*slog.Logger, error) {
 	cfg := config.GetConfig()
 
-	// Setup the logger
 	SetupLogger(cfg.ServiceName, string(cfg.Mode))
 
-	// Return the default logger
 	return slog.Default(), nil
 }

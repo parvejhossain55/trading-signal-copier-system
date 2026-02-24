@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// ResponseStatus represents the status of a response
 type ResponseStatus string
 
 const (
@@ -16,7 +15,6 @@ const (
 	StatusInfo    ResponseStatus = "info"
 )
 
-// BaseResponse represents the base structure for all API responses
 type BaseResponse struct {
 	Status    ResponseStatus `json:"status"`
 	Message   string         `json:"message"`
@@ -24,13 +22,11 @@ type BaseResponse struct {
 	RequestID string         `json:"request_id,omitempty"`
 }
 
-// SuccessResponse represents a successful response with data
 type SuccessResponse struct {
 	BaseResponse
 	Data interface{} `json:"data,omitempty"`
 }
 
-// ErrorResponse represents an error response
 type ErrorResponse struct {
 	BaseResponse
 	Error   string                 `json:"error"`
@@ -38,14 +34,12 @@ type ErrorResponse struct {
 	Details map[string]interface{} `json:"details,omitempty"`
 }
 
-// PaginatedResponse represents a paginated response
 type PaginatedResponse struct {
 	BaseResponse
 	Data       interface{} `json:"data"`
 	Pagination Pagination  `json:"pagination"`
 }
 
-// Pagination represents pagination metadata
 type Pagination struct {
 	Page       int   `json:"page"`
 	Limit      int   `json:"limit"`
@@ -55,15 +49,12 @@ type Pagination struct {
 	HasPrev    bool  `json:"has_prev"`
 }
 
-// ResponseBuilder provides methods to build different types of responses
 type ResponseBuilder struct{}
 
-// NewResponseBuilder creates a new response builder
 func NewResponseBuilder() *ResponseBuilder {
 	return &ResponseBuilder{}
 }
 
-// Success creates a success response
 func (rb *ResponseBuilder) Success(message string, data interface{}) *SuccessResponse {
 	return &SuccessResponse{
 		BaseResponse: BaseResponse{
@@ -75,7 +66,6 @@ func (rb *ResponseBuilder) Success(message string, data interface{}) *SuccessRes
 	}
 }
 
-// Error creates an error response
 func (rb *ResponseBuilder) Error(message, errorCode string, details map[string]interface{}) *ErrorResponse {
 	return &ErrorResponse{
 		BaseResponse: BaseResponse{
@@ -88,7 +78,6 @@ func (rb *ResponseBuilder) Error(message, errorCode string, details map[string]i
 	}
 }
 
-// Paginated creates a paginated response
 func (rb *ResponseBuilder) Paginated(message string, data interface{}, page, limit int, total int64) *PaginatedResponse {
 	totalPages := int((total + int64(limit) - 1) / int64(limit))
 
@@ -110,7 +99,6 @@ func (rb *ResponseBuilder) Paginated(message string, data interface{}, page, lim
 	}
 }
 
-// WithRequestID adds a request ID to the response
 func (rb *ResponseBuilder) WithRequestID(response interface{}, requestID string) {
 	switch r := response.(type) {
 	case *SuccessResponse:
@@ -139,7 +127,6 @@ func CreatePaginatedResponse(message string, data interface{}, page, limit int, 
 	return NewResponseBuilder().Paginated(message, data, page, limit, total)
 }
 
-// WriteSuccess writes a success response to the HTTP writer
 func WriteSuccess(w http.ResponseWriter, statusCode int, opts ...interface{}) {
 	message := "Success"
 	var data interface{} = nil
@@ -162,7 +149,6 @@ func WriteSuccess(w http.ResponseWriter, statusCode int, opts ...interface{}) {
 	writeJSON(w, statusCode, response)
 }
 
-// WriteError writes an error response to the HTTP writer
 func WriteError(w http.ResponseWriter, statusCode int, opts ...interface{}) {
 	message := "Error"
 	errorCode := "ERROR"
@@ -182,7 +168,6 @@ func WriteError(w http.ResponseWriter, statusCode int, opts ...interface{}) {
 	writeJSON(w, statusCode, response)
 }
 
-// WriteErrorWithDetails writes an error response with details to the HTTP writer
 func WriteErrorWithDetails(w http.ResponseWriter, statusCode int, opts ...interface{}) {
 	message := "Error"
 	errorCode := "ERROR"
@@ -208,7 +193,6 @@ func WriteErrorWithDetails(w http.ResponseWriter, statusCode int, opts ...interf
 	writeJSON(w, statusCode, response)
 }
 
-// WritePaginated writes a paginated response to the HTTP writer
 func WritePaginated(w http.ResponseWriter, statusCode int, opts ...interface{}) {
 	message := "Success"
 	var data interface{} = nil
@@ -244,12 +228,10 @@ func WritePaginated(w http.ResponseWriter, statusCode int, opts ...interface{}) 
 	writeJSON(w, statusCode, response)
 }
 
-// WriteJSON writes any JSON response to the HTTP writer
 func WriteJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 	writeJSON(w, statusCode, data)
 }
 
-// writeJSON is a helper function that writes JSON responses
 func writeJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)

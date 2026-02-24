@@ -15,12 +15,30 @@ func LoadConfig() error {
 		os.Exit(1)
 	}
 
-	err := godotenv.Load()
-	if err != nil {
-		slog.Warn(".env not found, that's okay!")
-	}
+	_ = godotenv.Load()
+
+	viper.SetDefault("VERSION", "1.0.0")
+	viper.SetDefault("MODE", "development")
+	viper.SetDefault("SERVICE_NAME", "copier")
+	viper.SetDefault("HTTP_PORT", 8080)
+	viper.SetDefault("GRPC_PORT", 8081)
+	viper.SetDefault("HEALTH_CHECK_ROUTE", "/health")
+	viper.SetDefault("API_VERSION", "v1")
+	viper.SetDefault("JWT_SECRET", "secret")
+	viper.SetDefault("SERVICE_BASE_PATH", "/api/v1")
+	viper.SetDefault("DB_HOST", "localhost")
+	viper.SetDefault("DB_PORT", 5432)
+	viper.SetDefault("DB_USER", "admin")
+	viper.SetDefault("DB_PASSWORD", "password")
+	viper.SetDefault("DB_NAME", "copier_db")
+	viper.SetDefault("DB_SSL_MODE", "disable")
+	viper.SetDefault("DB_TIMEZONE", "UTC")
+	viper.SetDefault("REDIS_HOST", "localhost")
+	viper.SetDefault("REDIS_PORT", 6379)
 
 	viper.AutomaticEnv()
+
+	var err error
 
 	config = &Config{
 		Version:          viper.GetString("VERSION"),
@@ -42,19 +60,18 @@ func LoadConfig() error {
 			MinIdle:  viper.GetInt("REDIS_MIN_IDLE"),
 		},
 
-		Database: MongoDatabase{
-			Host:       viper.GetString("MONGO_HOST"),
-			Port:       viper.GetInt("MONGO_PORT"),
-			User:       viper.GetString("MONGO_USER"),
-			Password:   viper.GetString("MONGO_PASSWORD"),
-			Database:   viper.GetString("MONGO_DATABASE"),
-			AuthSource: viper.GetString("MONGO_AUTH_SOURCE"),
-			SSL:        viper.GetBool("MONGO_SSL"),
-			MaxPoolSize:         viper.GetUint64("MONGO_MAX_POOL_SIZE"),
-			MinPoolSize:         viper.GetUint64("MONGO_MIN_POOL_SIZE"),
-			MaxConnIdleTimeInMs: viper.GetInt("MONGO_MAX_CONN_IDLE_TIME_MS"),
+		Database: PostgresDatabase{
+			Host:            viper.GetString("DB_HOST"),
+			Port:            viper.GetInt("DB_PORT"),
+			User:            viper.GetString("DB_USER"),
+			Password:        viper.GetString("DB_PASSWORD"),
+			Database:        viper.GetString("DB_NAME"),
+			SSLMode:         viper.GetString("DB_SSL_MODE"),
+			TimeZone:        viper.GetString("DB_TIMEZONE"),
+			MaxIdleConns:    viper.GetInt("DB_MAX_IDLE_CONNS"),
+			MaxOpenConns:    viper.GetInt("DB_MAX_OPEN_CONNS"),
+			ConnMaxLifetime: viper.GetInt("DB_CONN_MAX_LIFETIME"),
 		},
-
 
 		Cors: CorsOrigin{
 			Origin: viper.GetStringSlice("CORS_ORIGIN"),

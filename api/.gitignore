@@ -56,9 +56,6 @@ logs/
 *.db
 *.sqlite
 
-# Docker
-.dockerignore
-
 # Air temporary files
 tmp/
 

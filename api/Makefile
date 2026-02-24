@@ -3,7 +3,7 @@ MAIN := ./
 TARGET := main
 SERVER_CMD := ./$(TARGET) serve-rest
 GEN_JWT := ./$(TARGET) gen-jwt
-MIGRATE_CMD := ./$(TARGET) migrate-mongo
+MIGRATE_CMD := echo "PostgreSQL migrations are automatic on startup"
 SEED_CMD := ./$(TARGET) seed
 
 # ====== Go environment ======

@@ -1,44 +1,35 @@
 package config
 
 import (
-	"context"
 	"fmt"
 	"time"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
-// NewMongoDB creates and returns a new MongoDB client connection.
-func NewMongoDB() (*mongo.Client, error) {
+// NewPostgresDB creates and returns a new GORM PostgreSQL connection.
+func NewPostgresDB() (*gorm.DB, error) {
 	cfg := GetConfig()
 
-	// Use the GetDatabaseURL method which handles SSL configuration properly
-	connStr := cfg.GetDatabaseURL()
-	if connStr == "" {
+	dsn := cfg.GetDatabaseDSN()
+	if dsn == "" {
 		return nil, fmt.Errorf("no database configuration found")
 	}
 
-	// Set client options
-	clientOptions := options.Client().ApplyURI(connStr)
-	clientOptions.SetMaxPoolSize(uint64(cfg.Database.MaxPoolSize))
-	clientOptions.SetMinPoolSize(uint64(cfg.Database.MinPoolSize))
-	clientOptions.SetMaxConnIdleTime(time.Duration(cfg.Database.MaxConnIdleTimeInMs) * time.Millisecond)
-
-	// Connect to MongoDB
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	client, err := mongo.Connect(ctx, clientOptions)
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	// Ping the database to verify connection
-	err = client.Ping(ctx, nil)
+	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get sql.DB: %w", err)
 	}
 
-	return client, nil
+	sqlDB.SetMaxIdleConns(cfg.Database.MaxIdleConns)
+	sqlDB.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+	sqlDB.SetConnMaxLifetime(time.Duration(cfg.Database.ConnMaxLifetime) * time.Second)
+
+	return db, nil
 }

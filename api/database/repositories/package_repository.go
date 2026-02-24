@@ -3,54 +3,53 @@ package repositories
 import (
 	"context"
 	"fmt"
-	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"copier/internal/database/models"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // PackageRepository defines package-specific repository operations
 type PackageRepository interface {
 	BaseRepository
-	FindByName(ctx context.Context, name string) (*Package, error)
-	FindByType(ctx context.Context, packageType PackageType) ([]*Package, error)
-	FindActivePackages(ctx context.Context) ([]*Package, error)
-	FindByTypeAndActive(ctx context.Context, packageType PackageType, isActive bool) ([]*Package, error)
-	FindByPriceRange(ctx context.Context, minPrice, maxPrice float64) ([]*Package, error)
-	FindByIDTyped(ctx context.Context, id primitive.ObjectID) (*Package, error)
-	CreatePackage(ctx context.Context, pkg *Package) (*mongo.InsertOneResult, error)
-	UpdatePackage(ctx context.Context, id primitive.ObjectID, update *Package) error
-	DeletePackage(ctx context.Context, id primitive.ObjectID) error
-	FindAll(ctx context.Context, skip, limit int64) ([]*Package, error)
+	FindByName(ctx context.Context, name string) (*models.Package, error)
+	FindByType(ctx context.Context, packageType models.PackageType) ([]*models.Package, error)
+	FindActivePackages(ctx context.Context) ([]*models.Package, error)
+	FindByTypeAndActive(ctx context.Context, packageType models.PackageType, isActive bool) ([]*models.Package, error)
+	FindByPriceRange(ctx context.Context, minPrice, maxPrice float64) ([]*models.Package, error)
+	FindByIDTyped(ctx context.Context, id uuid.UUID) (*models.Package, error)
+	CreatePackage(ctx context.Context, pkg *models.Package) error
+	UpdatePackage(ctx context.Context, id uuid.UUID, update *models.Package) error
+	DeletePackage(ctx context.Context, id uuid.UUID) error
+	FindAll(ctx context.Context, skip, limit int) ([]*models.Package, error)
 	CountPackages(ctx context.Context) (int64, error)
-	CountByType(ctx context.Context, packageType PackageType) (int64, error)
+	CountByType(ctx context.Context, packageType models.PackageType) (int64, error)
 	CountActivePackages(ctx context.Context) (int64, error)
-	UpdateActiveStatus(ctx context.Context, id primitive.ObjectID, isActive bool) error
-	UpdatePrice(ctx context.Context, id primitive.ObjectID, price float64) error
+	UpdateActiveStatus(ctx context.Context, id uuid.UUID, isActive bool) error
+	UpdatePrice(ctx context.Context, id uuid.UUID, price float64) error
 }
 
 // packageRepository implements PackageRepository interface
 type packageRepository struct {
 	BaseRepository
-	collection *mongo.Collection
+	db *gorm.DB
 }
 
 // NewPackageRepository creates a new package repository instance
-func NewPackageRepository(collection *mongo.Collection) PackageRepository {
+func NewPackageRepository(db *gorm.DB) PackageRepository {
 	return &packageRepository{
-		BaseRepository: NewBaseRepository(collection),
-		collection:     collection,
+		BaseRepository: NewBaseRepository(db),
+		db:             db,
 	}
 }
 
 // FindByName finds a package by name
-func (r *packageRepository) FindByName(ctx context.Context, name string) (*Package, error) {
-	var pkg Package
-	err := r.collection.FindOne(ctx, bson.M{"name": name}).Decode(&pkg)
+func (r *packageRepository) FindByName(ctx context.Context, name string) (*models.Package, error) {
+	var pkg models.Package
+	err := r.db.WithContext(ctx).Where("name = ?", name).First(&pkg).Error
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
+		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("package not found with name: %s", name)
 		}
 		return nil, fmt.Errorf("failed to find package by name: %w", err)
@@ -60,120 +59,56 @@ func (r *packageRepository) FindByName(ctx context.Context, name string) (*Packa
 }
 
 // FindByType finds all packages of a specific type
-func (r *packageRepository) FindByType(ctx context.Context, packageType PackageType) ([]*Package, error) {
-	cursor, err := r.collection.Find(ctx, bson.M{"type": packageType})
+func (r *packageRepository) FindByType(ctx context.Context, packageType models.PackageType) ([]*models.Package, error) {
+	var packages []*models.Package
+	err := r.db.WithContext(ctx).Where("type = ?", packageType).Find(&packages).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find packages by type: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var packages []*Package
-	for cursor.Next(ctx) {
-		var pkg Package
-		if err := cursor.Decode(&pkg); err != nil {
-			return nil, fmt.Errorf("failed to decode package: %w", err)
-		}
-		packages = append(packages, &pkg)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
 	return packages, nil
 }
 
 // FindActivePackages finds all active packages
-func (r *packageRepository) FindActivePackages(ctx context.Context) ([]*Package, error) {
-	cursor, err := r.collection.Find(ctx, bson.M{"is_active": true})
+func (r *packageRepository) FindActivePackages(ctx context.Context) ([]*models.Package, error) {
+	var packages []*models.Package
+	err := r.db.WithContext(ctx).Where("is_active = ?", true).Find(&packages).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find active packages: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var packages []*Package
-	for cursor.Next(ctx) {
-		var pkg Package
-		if err := cursor.Decode(&pkg); err != nil {
-			return nil, fmt.Errorf("failed to decode package: %w", err)
-		}
-		packages = append(packages, &pkg)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
 	return packages, nil
 }
 
 // FindByTypeAndActive finds packages by type and active status
-func (r *packageRepository) FindByTypeAndActive(ctx context.Context, packageType PackageType, isActive bool) ([]*Package, error) {
-	filter := bson.M{
-		"type":      packageType,
-		"is_active": isActive,
-	}
-
-	cursor, err := r.collection.Find(ctx, filter)
+func (r *packageRepository) FindByTypeAndActive(ctx context.Context, packageType models.PackageType, isActive bool) ([]*models.Package, error) {
+	var packages []*models.Package
+	err := r.db.WithContext(ctx).Where("type = ? AND is_active = ?", packageType, isActive).Find(&packages).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find packages by type and active status: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var packages []*Package
-	for cursor.Next(ctx) {
-		var pkg Package
-		if err := cursor.Decode(&pkg); err != nil {
-			return nil, fmt.Errorf("failed to decode package: %w", err)
-		}
-		packages = append(packages, &pkg)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
 	return packages, nil
 }
 
 // FindByPriceRange finds packages within a price range
-func (r *packageRepository) FindByPriceRange(ctx context.Context, minPrice, maxPrice float64) ([]*Package, error) {
-	filter := bson.M{
-		"price": bson.M{
-			"$gte": minPrice,
-			"$lte": maxPrice,
-		},
-	}
-
-	cursor, err := r.collection.Find(ctx, filter)
+func (r *packageRepository) FindByPriceRange(ctx context.Context, minPrice, maxPrice float64) ([]*models.Package, error) {
+	var packages []*models.Package
+	err := r.db.WithContext(ctx).Where("price >= ? AND price <= ?", minPrice, maxPrice).Find(&packages).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find packages by price range: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var packages []*Package
-	for cursor.Next(ctx) {
-		var pkg Package
-		if err := cursor.Decode(&pkg); err != nil {
-			return nil, fmt.Errorf("failed to decode package: %w", err)
-		}
-		packages = append(packages, &pkg)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
 	return packages, nil
 }
 
 // FindByIDTyped finds a package by ID and returns typed Package struct
-func (r *packageRepository) FindByIDTyped(ctx context.Context, id primitive.ObjectID) (*Package, error) {
-	var pkg Package
-	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&pkg)
+func (r *packageRepository) FindByIDTyped(ctx context.Context, id uuid.UUID) (*models.Package, error) {
+	var pkg models.Package
+	err := r.db.WithContext(ctx).First(&pkg, id).Error
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("package not found with ID: %s", id.Hex())
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("package not found with ID: %s", id)
 		}
 		return nil, fmt.Errorf("failed to find package by ID: %w", err)
 	}
@@ -182,20 +117,18 @@ func (r *packageRepository) FindByIDTyped(ctx context.Context, id primitive.Obje
 }
 
 // CreatePackage creates a new package
-func (r *packageRepository) CreatePackage(ctx context.Context, pkg *Package) (*mongo.InsertOneResult, error) {
-	result, err := r.collection.InsertOne(ctx, pkg)
+func (r *packageRepository) CreatePackage(ctx context.Context, pkg *models.Package) error {
+	err := r.db.WithContext(ctx).Create(pkg).Error
 	if err != nil {
-		return nil, fmt.Errorf("failed to create package: %w", err)
+		return fmt.Errorf("failed to create package: %w", err)
 	}
 
-	return result, nil
+	return nil
 }
 
 // UpdatePackage updates an existing package
-func (r *packageRepository) UpdatePackage(ctx context.Context, id primitive.ObjectID, update *Package) error {
-	update.UpdatedAt = time.Now()
-	
-	_, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": update})
+func (r *packageRepository) UpdatePackage(ctx context.Context, id uuid.UUID, update *models.Package) error {
+	err := r.db.WithContext(ctx).Model(&models.Package{}).Where("id = ?", id).Updates(update).Error
 	if err != nil {
 		return fmt.Errorf("failed to update package: %w", err)
 	}
@@ -204,8 +137,8 @@ func (r *packageRepository) UpdatePackage(ctx context.Context, id primitive.Obje
 }
 
 // DeletePackage deletes a package by ID
-func (r *packageRepository) DeletePackage(ctx context.Context, id primitive.ObjectID) error {
-	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
+func (r *packageRepository) DeletePackage(ctx context.Context, id uuid.UUID) error {
+	err := r.db.WithContext(ctx).Delete(&models.Package{}, id).Error
 	if err != nil {
 		return fmt.Errorf("failed to delete package: %w", err)
 	}
@@ -214,33 +147,19 @@ func (r *packageRepository) DeletePackage(ctx context.Context, id primitive.Obje
 }
 
 // FindAll retrieves all packages with pagination
-func (r *packageRepository) FindAll(ctx context.Context, skip, limit int64) ([]*Package, error) {
-	opts := options.Find()
+func (r *packageRepository) FindAll(ctx context.Context, skip, limit int) ([]*models.Package, error) {
+	var packages []*models.Package
+	query := r.db.WithContext(ctx).Order("created_at desc")
 	if skip > 0 {
-		opts.SetSkip(skip)
+		query = query.Offset(skip)
 	}
 	if limit > 0 {
-		opts.SetLimit(limit)
+		query = query.Limit(limit)
 	}
-	opts.SetSort(bson.M{"created_at": -1}) // Sort by creation date descending
 
-	cursor, err := r.collection.Find(ctx, bson.M{}, opts)
+	err := query.Find(&packages).Error
 	if err != nil {
 		return nil, fmt.Errorf("failed to find packages: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var packages []*Package
-	for cursor.Next(ctx) {
-		var pkg Package
-		if err := cursor.Decode(&pkg); err != nil {
-			return nil, fmt.Errorf("failed to decode package: %w", err)
-		}
-		packages = append(packages, &pkg)
-	}
-
-	if err := cursor.Err(); err != nil {
-		return nil, fmt.Errorf("cursor error: %w", err)
 	}
 
 	return packages, nil
@@ -248,7 +167,8 @@ func (r *packageRepository) FindAll(ctx context.Context, skip, limit int64) ([]*
 
 // CountPackages returns the total number of packages
 func (r *packageRepository) CountPackages(ctx context.Context) (int64, error) {
-	count, err := r.collection.CountDocuments(ctx, bson.M{})
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.Package{}).Count(&count).Error
 	if err != nil {
 		return 0, fmt.Errorf("failed to count packages: %w", err)
 	}
@@ -257,8 +177,9 @@ func (r *packageRepository) CountPackages(ctx context.Context) (int64, error) {
 }
 
 // CountByType returns the number of packages of a specific type
-func (r *packageRepository) CountByType(ctx context.Context, packageType PackageType) (int64, error) {
-	count, err := r.collection.CountDocuments(ctx, bson.M{"type": packageType})
+func (r *packageRepository) CountByType(ctx context.Context, packageType models.PackageType) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.Package{}).Where("type = ?", packageType).Count(&count).Error
 	if err != nil {
 		return 0, fmt.Errorf("failed to count packages by type: %w", err)
 	}
@@ -268,7 +189,8 @@ func (r *packageRepository) CountByType(ctx context.Context, packageType Package
 
 // CountActivePackages returns the number of active packages
 func (r *packageRepository) CountActivePackages(ctx context.Context) (int64, error) {
-	count, err := r.collection.CountDocuments(ctx, bson.M{"is_active": true})
+	var count int64
+	err := r.db.WithContext(ctx).Model(&models.Package{}).Where("is_active = ?", true).Count(&count).Error
 	if err != nil {
 		return 0, fmt.Errorf("failed to count active packages: %w", err)
 	}
@@ -277,13 +199,8 @@ func (r *packageRepository) CountActivePackages(ctx context.Context) (int64, err
 }
 
 // UpdateActiveStatus updates only the active status of a package
-func (r *packageRepository) UpdateActiveStatus(ctx context.Context, id primitive.ObjectID, isActive bool) error {
-	update := bson.M{
-		"is_active":  isActive,
-		"updated_at": bson.M{"$currentDate": true},
-	}
-
-	_, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": update})
+func (r *packageRepository) UpdateActiveStatus(ctx context.Context, id uuid.UUID, isActive bool) error {
+	err := r.db.WithContext(ctx).Model(&models.Package{}).Where("id = ?", id).Update("is_active", isActive).Error
 	if err != nil {
 		return fmt.Errorf("failed to update package active status: %w", err)
 	}
@@ -292,13 +209,8 @@ func (r *packageRepository) UpdateActiveStatus(ctx context.Context, id primitive
 }
 
 // UpdatePrice updates only the price of a package
-func (r *packageRepository) UpdatePrice(ctx context.Context, id primitive.ObjectID, price float64) error {
-	update := bson.M{
-		"price":      price,
-		"updated_at": bson.M{"$currentDate": true},
-	}
-
-	_, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": update})
+func (r *packageRepository) UpdatePrice(ctx context.Context, id uuid.UUID, price float64) error {
+	err := r.db.WithContext(ctx).Model(&models.Package{}).Where("id = ?", id).Update("price", price).Error
 	if err != nil {
 		return fmt.Errorf("failed to update package price: %w", err)
 	}
